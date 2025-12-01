@@ -1,6 +1,8 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import type { Project, User } from "@/types";
 
 interface TopBarProps {
@@ -9,6 +11,32 @@ interface TopBarProps {
 }
 
 export function TopBar({ project, user }: TopBarProps) {
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSignOut = async () => {
+    try {
+      await fetch("http://localhost:3000/api/v1/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      router.push("/login");
+    } catch (error) {
+      console.error("Sign out error:", error);
+    }
+  };
+
   return (
     <header className="app-topbar flex items-center justify-between px-4">
       {/* Left: Brand + Project */}
@@ -39,21 +67,55 @@ export function TopBar({ project, user }: TopBarProps) {
           Dev
         </span>
 
-        {/* User avatar */}
+        {/* User avatar with dropdown */}
         {user && (
-          <button className="w-8 h-8 rounded-full bg-bg-elevated border border-border-subtle overflow-hidden hover:border-accent-primary transition-colors">
-            {user.avatarUrl ? (
-              <img
-                src={user.avatarUrl}
-                alt={user.name || user.email}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="flex items-center justify-center w-full h-full text-caption text-text-muted">
-                {(user.name || user.email).charAt(0).toUpperCase()}
-              </span>
-            )}
-          </button>
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="w-8 h-8 rounded-full bg-bg-elevated border border-border-subtle overflow-hidden hover:border-accent-primary transition-colors"
+            >
+              {user.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt={user.name || user.email}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="flex items-center justify-center w-full h-full text-caption text-text-muted">
+                  {(user.name || user.email).charAt(0).toUpperCase()}
+                </span>
+              )}
+            </button>
+
+            <AnimatePresence>
+              {showMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 top-full mt-2 w-48 bg-bg-elevated border border-border-subtle rounded-lg shadow-lg overflow-hidden z-50"
+                >
+                  <div className="px-3 py-2 border-b border-border-subtle">
+                    <p className="text-sm text-text-primary truncate">
+                      {user.name || user.email}
+                    </p>
+                    {user.name && (
+                      <p className="text-xs text-text-muted truncate">
+                        {user.email}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-bg-surface transition-colors"
+                  >
+                    Sign out
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         )}
       </div>
     </header>

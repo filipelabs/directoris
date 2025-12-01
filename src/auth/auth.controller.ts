@@ -30,7 +30,7 @@ export class AuthController {
     @Query('screen_hint') screenHint?: 'sign-in' | 'sign-up',
   ) {
     const port = this.configService.get<number>('port');
-    const redirectUri = `http://localhost:${port}/auth/callback`;
+    const redirectUri = `http://localhost:${port}/api/v1/auth/callback`;
     const authUrl = this.authService.getAuthorizationUrl(redirectUri, screenHint);
     res.redirect(authUrl);
   }
@@ -43,18 +43,22 @@ export class AuthController {
     @Res() res: Response,
   ) {
     try {
-      const { sealedSession } = await this.authService.handleCallback(code);
+      const { user, sealedSession } = await this.authService.handleCallback(code);
+      console.log('[AuthCallback] User authenticated:', JSON.stringify(user, null, 2));
+      console.log('[AuthCallback] Sealed session length:', sealedSession?.length);
       const frontendUrl = this.configService.get<string>('frontendUrl');
 
-      res.cookie('wos_session', sealedSession, {
+      res.cookie('wos-session', sealedSession, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+        path: '/',
       });
 
-      res.redirect(`${frontendUrl}/dashboard`);
+      console.log('[AuthCallback] Cookie set, redirecting to:', `${frontendUrl}/story`);
+      res.redirect(`${frontendUrl}/story`);
     } catch (error) {
+      console.error('[AuthCallback] Error:', error);
       const frontendUrl = this.configService.get<string>('frontendUrl');
       res.redirect(`${frontendUrl}/login?error=auth_failed`);
     }
@@ -63,7 +67,7 @@ export class AuthController {
   @Post('logout')
   @ApiOperation({ summary: 'Logout and clear session' })
   logout(@Res() res: Response) {
-    res.clearCookie('wos_session');
+    res.clearCookie('wos-session');
     res.status(HttpStatus.OK).json({ message: 'Logged out successfully' });
   }
 

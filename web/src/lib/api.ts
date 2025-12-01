@@ -20,7 +20,8 @@ import type {
   CreateCharacterDto,
 } from "@/types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+const API_PREFIX = "/api/v1";
 
 // ─── Base Fetch ────────────────────────────────────────────────────────────
 
@@ -38,7 +39,7 @@ async function apiFetch<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const url = `${API_BASE}${path}`;
+  const url = `${API_BASE}${API_PREFIX}${path}`;
   const res = await fetch(url, {
     ...options,
     credentials: "include",
@@ -68,7 +69,7 @@ export const auth = {
   getSession: () => apiFetch<Session>("/auth/session"),
 
   login: (screenHint: "sign-in" | "sign-up" = "sign-in") => {
-    window.location.href = `${API_BASE}/auth/login?screen_hint=${screenHint}`;
+    window.location.href = `${API_BASE}${API_PREFIX}/auth/login?screen_hint=${screenHint}`;
   },
 
   logout: () => apiFetch<void>("/auth/logout", { method: "POST" }),

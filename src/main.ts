@@ -7,6 +7,9 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Global prefix for all API routes
+  app.setGlobalPrefix('api/v1');
+
   // Cookie parser for WorkOS sessions
   app.use(cookieParser());
 
@@ -47,6 +50,7 @@ async function bootstrap() {
   ║   storytelling                                       ║
   ║                                                      ║
   ║   Server running on http://localhost:${port}            ║
+  ║   API base: http://localhost:${port}/api/v1             ║
   ║   Swagger docs: http://localhost:${port}/api/docs       ║
   ║                                                      ║
   ╚══════════════════════════════════════════════════════╝

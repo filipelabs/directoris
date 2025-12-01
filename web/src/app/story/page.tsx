@@ -16,214 +16,6 @@ import type {
   AgentType,
 } from "@/types";
 
-// Mock data for development when backend isn't running
-const MOCK_DATA = {
-  user: {
-    id: "user_1",
-    workosId: "wos_1",
-    email: "director@example.com",
-    name: "Director",
-    avatarUrl: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  project: {
-    id: "proj_1",
-    name: "The Untold Story",
-    description: "A cinematic masterpiece",
-    ownerId: "user_1",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  acts: [
-    {
-      id: "act_1",
-      index: 0,
-      title: "Setup",
-      synopsis: "Introducing our world and characters",
-      projectId: "proj_1",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      sequences: [
-        {
-          id: "seq_1",
-          index: 0,
-          title: "The Arrival",
-          summary: "Our hero arrives in the city",
-          actId: "act_1",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          scenes: [
-            {
-              id: "scene_1",
-              index: 0,
-              title: "Opening shot",
-              summary:
-                "Aerial view of the city at dawn. The camera slowly descends through the clouds, revealing a sprawling metropolis awakening to a new day.",
-              purpose: "Establish the setting and tone",
-              tone: "Mysterious",
-              sequenceId: "seq_1",
-              locationId: "loc_1",
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              characters: [{ id: "sc_1", sceneId: "scene_1", characterId: "char_1" }],
-            },
-            {
-              id: "scene_2",
-              index: 1,
-              title: "The deal is struck",
-              summary:
-                "In a dimly lit tavern, Lord Malachar meets with the mysterious stranger. They negotiate terms that will change the fate of the realm.",
-              purpose: "Introduce the central conflict",
-              tone: "Tense",
-              sequenceId: "seq_1",
-              locationId: "loc_2",
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              characters: [
-                { id: "sc_2", sceneId: "scene_2", characterId: "char_1" },
-                { id: "sc_3", sceneId: "scene_2", characterId: "char_2" },
-              ],
-            },
-          ],
-        },
-        {
-          id: "seq_2",
-          index: 1,
-          title: "Rising Action",
-          summary: "The stakes are raised",
-          actId: "act_1",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          scenes: [
-            {
-              id: "scene_3",
-              index: 0,
-              title: "Discovery",
-              summary: "Elira discovers the ancient artifact hidden in the library.",
-              purpose: "Introduce the MacGuffin",
-              tone: "Wonder",
-              sequenceId: "seq_2",
-              locationId: null,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              characters: [{ id: "sc_4", sceneId: "scene_3", characterId: "char_2" }],
-            },
-          ],
-        },
-      ],
-    },
-    {
-      id: "act_2",
-      index: 1,
-      title: "Confrontation",
-      synopsis: "The conflict escalates",
-      projectId: "proj_1",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      sequences: [],
-    },
-  ],
-  characters: [
-    {
-      id: "char_1",
-      name: "Lord Malachar",
-      bio: "A powerful lord with a dark past",
-      archetype: "Anti-hero",
-      voiceNotes: null,
-      imageUrl: null,
-      projectId: "proj_1",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: "char_2",
-      name: "Elira",
-      bio: "A young scholar seeking ancient knowledge",
-      archetype: "Seeker",
-      voiceNotes: null,
-      imageUrl: null,
-      projectId: "proj_1",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-  ],
-  locations: [
-    {
-      id: "loc_1",
-      name: "The City",
-      description: "A sprawling metropolis",
-      imageUrl: null,
-      projectId: "proj_1",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: "loc_2",
-      name: "Dockside Tavern",
-      description: "A dimly lit establishment by the waterfront",
-      imageUrl: null,
-      projectId: "proj_1",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-  ],
-  suggestions: [
-    {
-      id: "sug_1",
-      agentType: "CONTINUITY" as AgentType,
-      projectId: "proj_1",
-      sceneId: "scene_2",
-      shotId: null,
-      severity: "ERROR" as const,
-      title: "Magic rule violation",
-      content:
-        "Lord Malachar uses teleportation magic in this scene, but no sacrifice is shown. According to the world rules, all magic requires a sacrifice to function.",
-      metadata: {
-        characterName: "Lord Malachar",
-        ruleTitle: "Magic requires sacrifice",
-      },
-      resolved: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: "sug_2",
-      agentType: "CONTINUITY" as AgentType,
-      projectId: "proj_1",
-      sceneId: "scene_2",
-      shotId: null,
-      severity: "WARNING" as const,
-      title: "Timeline inconsistency",
-      content:
-        "This scene is set at night, but the previous scene established it was early morning. Consider adding a time transition.",
-      metadata: {
-        relatedSceneTitles: ["Opening shot"],
-      },
-      resolved: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: "sug_3",
-      agentType: "CHARACTER" as AgentType,
-      projectId: "proj_1",
-      sceneId: "scene_2",
-      shotId: null,
-      severity: "INFO" as const,
-      title: "Character motivation unclear",
-      content:
-        "Elira's presence in this scene hasn't been established. Consider adding a brief explanation of why she's at the tavern.",
-      metadata: {
-        characterName: "Elira",
-      },
-      resolved: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-  ],
-};
-
 export default function StoryPage() {
   const [view, setView] = useState<"story" | "canon" | "agents">("story");
   const [user, setUser] = useState<User | null>(null);
@@ -234,11 +26,14 @@ export default function StoryPage() {
   const [selectedScene, setSelectedScene] = useState<Scene | null>(null);
   const [suggestions, setSuggestions] = useState<AgentOutput[]>([]);
   const [isLoadingAgents, setIsLoadingAgents] = useState(false);
-  const [useMockData, setUseMockData] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Load initial data
   useEffect(() => {
     async function loadData() {
+      setIsLoading(true);
+      setError(null);
       try {
         // Try to get session
         const session = await api.auth.getSession();
@@ -262,14 +57,10 @@ export default function StoryPage() {
           setLocations(locsData);
         }
       } catch (err) {
-        console.log("Using mock data (backend not available)");
-        setUseMockData(true);
-        setUser(MOCK_DATA.user);
-        setProject(MOCK_DATA.project);
-        setActs(MOCK_DATA.acts as Act[]);
-        setCharacters(MOCK_DATA.characters);
-        setLocations(MOCK_DATA.locations);
-        setSuggestions(MOCK_DATA.suggestions);
+        console.error("Failed to load data:", err);
+        setError("Failed to connect. Please ensure the backend is running and you're logged in.");
+      } finally {
+        setIsLoading(false);
       }
     }
 
@@ -278,7 +69,7 @@ export default function StoryPage() {
 
   // Load suggestions when scene changes
   useEffect(() => {
-    if (!selectedScene || useMockData) return;
+    if (!selectedScene) return;
 
     async function loadSuggestions() {
       try {
@@ -290,7 +81,7 @@ export default function StoryPage() {
     }
 
     loadSuggestions();
-  }, [selectedScene, useMockData]);
+  }, [selectedScene]);
 
   // Run agents
   const handleRunAgents = useCallback(
@@ -299,33 +90,25 @@ export default function StoryPage() {
 
       setIsLoadingAgents(true);
       try {
-        if (useMockData) {
-          // Simulate delay for mock
-          await new Promise((r) => setTimeout(r, 1500));
-          // Just use existing mock suggestions
-        } else {
-          const newSuggestions = await api.scenes.runAgents(
-            selectedScene.id,
-            agentTypes
-          );
-          setSuggestions((prev) => [...newSuggestions, ...prev]);
-        }
+        const newSuggestions = await api.scenes.runAgents(
+          selectedScene.id,
+          agentTypes
+        );
+        setSuggestions((prev) => [...newSuggestions, ...prev]);
       } catch (err) {
         console.error("Failed to run agents:", err);
       } finally {
         setIsLoadingAgents(false);
       }
     },
-    [selectedScene, useMockData]
+    [selectedScene]
   );
 
   // Resolve suggestion
   const handleResolve = useCallback(
     async (id: string, resolved: boolean) => {
       try {
-        if (!useMockData) {
-          await api.agentOutputs.resolve(id, resolved);
-        }
+        await api.agentOutputs.resolve(id, resolved);
         setSuggestions((prev) =>
           prev.map((s) => (s.id === id ? { ...s, resolved } : s))
         );
@@ -333,7 +116,7 @@ export default function StoryPage() {
         console.error("Failed to resolve suggestion:", err);
       }
     },
-    [useMockData]
+    []
   );
 
   // Find context for selected scene
@@ -370,6 +153,82 @@ export default function StoryPage() {
   const sceneSuggestions = selectedScene
     ? suggestions.filter((s) => s.sceneId === selectedScene.id)
     : [];
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="app-shell">
+        <TopBar project={null} user={null} />
+        <Sidebar activeView={view} onViewChange={setView} />
+        <main className="app-main">
+          <div className="col-span-3 flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-8 h-8 border-2 border-accent-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-text-secondary">Loading...</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="app-shell">
+        <TopBar project={null} user={null} />
+        <Sidebar activeView={view} onViewChange={setView} />
+        <main className="app-main">
+          <div className="col-span-3 flex items-center justify-center">
+            <div className="text-center max-w-md">
+              <div className="w-12 h-12 rounded-full bg-severity-error/20 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-severity-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h2 className="text-lg font-medium text-text-primary mb-2">Connection Error</h2>
+              <p className="text-text-secondary mb-4">{error}</p>
+              <a
+                href="/api/v1/auth/login"
+                className="inline-flex items-center px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors"
+              >
+                Sign in with WorkOS
+              </a>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Empty state - no projects
+  if (!project) {
+    return (
+      <div className="app-shell">
+        <TopBar project={null} user={user} />
+        <Sidebar activeView={view} onViewChange={setView} />
+        <main className="app-main">
+          <div className="col-span-3 flex items-center justify-center">
+            <div className="text-center max-w-md">
+              <div className="w-12 h-12 rounded-full bg-accent-primary/20 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-accent-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+              </div>
+              <h2 className="text-lg font-medium text-text-primary mb-2">No Projects Yet</h2>
+              <p className="text-text-secondary mb-4">Create your first story project to get started.</p>
+              <button
+                onClick={() => {/* TODO: Create project modal */}}
+                className="inline-flex items-center px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors"
+              >
+                Create Project
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="app-shell">

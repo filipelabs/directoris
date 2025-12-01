@@ -19,13 +19,18 @@ export class AuthGuard implements CanActivate {
     private configService: ConfigService,
     private prisma: PrismaService,
   ) {
-    this.workos = new WorkOS(this.configService.get<string>('workos.apiKey'));
+    this.workos = new WorkOS(this.configService.get<string>('workos.apiKey'), {
+      clientId: this.configService.get<string>('workos.clientId'),
+    });
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const handler = context.getHandler();
+    const controller = context.getClass();
+
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
+      handler,
+      controller,
     ]);
 
     if (isPublic) {
@@ -33,7 +38,7 @@ export class AuthGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest();
-    const sessionCookie = request.cookies?.wos_session;
+    const sessionCookie = request.cookies?.['wos-session'];
 
     if (!sessionCookie) {
       throw new UnauthorizedException('No session cookie');
@@ -43,15 +48,22 @@ export class AuthGuard implements CanActivate {
       const cookiePassword = this.configService.get<string>(
         'workos.cookiePassword',
       );
-      const sessionAuth =
-        await this.workos.userManagement.authenticateWithSessionCookie({
-          sessionData: sessionCookie,
-          cookiePassword: cookiePassword!,
-        });
+      console.log('[AuthGuard] Cookie password length:', cookiePassword?.length);
+      console.log('[AuthGuard] Session cookie length:', sessionCookie?.length);
 
-      if (!sessionAuth.authenticated) {
+      // Use authenticateWithSessionCookie to validate the sealed session
+      const authResult = await this.workos.userManagement.authenticateWithSessionCookie({
+        sessionData: sessionCookie,
+        cookiePassword: cookiePassword!,
+      });
+      console.log('[AuthGuard] Auth result:', JSON.stringify(authResult, null, 2));
+
+      if (!authResult.authenticated) {
+        console.log('[AuthGuard] Not authenticated, reason:', authResult.reason);
         throw new UnauthorizedException('Invalid session');
       }
+
+      const sessionAuth = authResult;
 
       // Get or create user in our database
       const user = await this.prisma.user.upsert({
@@ -78,6 +90,7 @@ export class AuthGuard implements CanActivate {
       request.user = user;
       return true;
     } catch (error) {
+      console.error('[AuthGuard] Error:', error);
       throw new UnauthorizedException('Authentication failed');
     }
   }

@@ -1,3 +1,9 @@
+import * as dotenv from 'dotenv';
+import { resolve } from 'path';
+
+// Load .env with override to ensure file values take precedence over shell env
+dotenv.config({ path: resolve(process.cwd(), '.env'), override: true });
+
 export default () => ({
   port: parseInt(process.env.PORT || '3000', 10),
   database: {
