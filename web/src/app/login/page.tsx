@@ -173,7 +173,7 @@ export default function LoginPage() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ delay: 0.3, duration: 0.5 }}
                 >
-                  directoris
+                  Directoris
                 </motion.h1>
 
                 {/* Tagline */}
