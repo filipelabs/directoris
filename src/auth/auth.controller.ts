@@ -29,8 +29,8 @@ export class AuthController {
     @Res() res: Response,
     @Query('screen_hint') screenHint?: 'sign-in' | 'sign-up',
   ) {
-    const port = this.configService.get<number>('port');
-    const redirectUri = `http://localhost:${port}/api/v1/auth/callback`;
+    const apiUrl = this.configService.get<string>('apiUrl');
+    const redirectUri = `${apiUrl}/api/v1/auth/callback`;
     const authUrl = this.authService.getAuthorizationUrl(redirectUri, screenHint);
     res.redirect(authUrl);
   }
