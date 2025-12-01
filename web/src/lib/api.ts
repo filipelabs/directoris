@@ -10,6 +10,10 @@ import type {
   Sequence,
   Scene,
   Character,
+  CharacterFact,
+  CharacterRelationship,
+  CharacterArc,
+  CharacterArcBeat,
   WorldRule,
   Location,
   AgentOutput,
@@ -20,6 +24,14 @@ import type {
   CreateSceneDto,
   CreateCharacterDto,
   CreateWorldRuleDto,
+  CreateCharacterFactDto,
+  UpdateCharacterFactDto,
+  CreateCharacterRelationshipDto,
+  UpdateCharacterRelationshipDto,
+  CreateCharacterArcDto,
+  UpdateCharacterArcDto,
+  CreateCharacterArcBeatDto,
+  UpdateCharacterArcBeatDto,
 } from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -209,6 +221,96 @@ export const characters = {
     apiFetch<void>(`/characters/${id}`, { method: "DELETE" }),
 };
 
+// ─── Character Facts ───────────────────────────────────────────────────────
+
+export const facts = {
+  list: (characterId: string) =>
+    apiFetch<CharacterFact[]>(`/characters/${characterId}/facts`),
+
+  create: (characterId: string, data: CreateCharacterFactDto) =>
+    apiFetch<CharacterFact>(`/characters/${characterId}/facts`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (factId: string, data: UpdateCharacterFactDto) =>
+    apiFetch<CharacterFact>(`/facts/${factId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (factId: string) =>
+    apiFetch<void>(`/facts/${factId}`, { method: "DELETE" }),
+};
+
+// ─── Character Relationships ───────────────────────────────────────────────
+
+export const relationships = {
+  list: (characterId: string) =>
+    apiFetch<CharacterRelationship[]>(`/characters/${characterId}/relationships`),
+
+  create: (characterId: string, data: CreateCharacterRelationshipDto) =>
+    apiFetch<CharacterRelationship>(`/characters/${characterId}/relationships`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (relationshipId: string, data: UpdateCharacterRelationshipDto) =>
+    apiFetch<CharacterRelationship>(`/relationships/${relationshipId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (relationshipId: string) =>
+    apiFetch<void>(`/relationships/${relationshipId}`, { method: "DELETE" }),
+};
+
+// ─── Character Arcs ────────────────────────────────────────────────────────
+
+export const arcs = {
+  list: (characterId: string) =>
+    apiFetch<CharacterArc[]>(`/characters/${characterId}/arcs`),
+
+  get: (arcId: string) => apiFetch<CharacterArc>(`/arcs/${arcId}`),
+
+  create: (characterId: string, data: CreateCharacterArcDto) =>
+    apiFetch<CharacterArc>(`/characters/${characterId}/arcs`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (arcId: string, data: UpdateCharacterArcDto) =>
+    apiFetch<CharacterArc>(`/arcs/${arcId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (arcId: string) =>
+    apiFetch<void>(`/arcs/${arcId}`, { method: "DELETE" }),
+};
+
+// ─── Arc Beats ─────────────────────────────────────────────────────────────
+
+export const beats = {
+  list: (arcId: string) =>
+    apiFetch<CharacterArcBeat[]>(`/arcs/${arcId}/beats`),
+
+  create: (arcId: string, data: CreateCharacterArcBeatDto) =>
+    apiFetch<CharacterArcBeat>(`/arcs/${arcId}/beats`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (beatId: string, data: UpdateCharacterArcBeatDto) =>
+    apiFetch<CharacterArcBeat>(`/beats/${beatId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (beatId: string) =>
+    apiFetch<void>(`/beats/${beatId}`, { method: "DELETE" }),
+};
+
 // ─── World Rules ───────────────────────────────────────────────────────────
 
 export const rules = {
@@ -261,6 +363,10 @@ export const api = {
   sequences,
   scenes,
   characters,
+  facts,
+  relationships,
+  arcs,
+  beats,
   rules,
   locations,
   agentOutputs,

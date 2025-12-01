@@ -275,3 +275,62 @@ export interface CreateLocationDto {
   description?: string;
   imageUrl?: string;
 }
+
+// ─── Canon DTOs ───────────────────────────────────────────────────────────
+
+export interface CreateCharacterFactDto {
+  label: string;
+  value: string;
+  isSecret?: boolean;
+  knownByIds?: string[];
+}
+
+export interface UpdateCharacterFactDto {
+  label?: string;
+  value?: string;
+  isSecret?: boolean;
+  knownByIds?: string[];
+}
+
+export interface CreateCharacterRelationshipDto {
+  toId: string;
+  label: string;
+  description?: string;
+  dynamic?: string;
+}
+
+export interface UpdateCharacterRelationshipDto {
+  label?: string;
+  description?: string;
+  dynamic?: string;
+}
+
+export interface CreateCharacterArcDto {
+  title: string;
+  season?: number;
+  summary?: string;
+  startState?: string;
+  endState?: string;
+}
+
+export interface UpdateCharacterArcDto {
+  title?: string;
+  season?: number;
+  summary?: string;
+  startState?: string;
+  endState?: string;
+}
+
+export interface CreateCharacterArcBeatDto {
+  description: string;
+  index: number;
+  type?: string;
+  sceneId?: string;
+}
+
+export interface UpdateCharacterArcBeatDto {
+  description?: string;
+  index?: number;
+  type?: string;
+  sceneId?: string;
+}

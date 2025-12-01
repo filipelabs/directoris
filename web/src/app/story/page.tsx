@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { TopBar, Sidebar, NewProjectModal } from "@/components/shell";
 import { SceneTree, SceneDetail } from "@/components/story";
 import { AgentPanel } from "@/components/agents";
+import { CanonView } from "@/components/canon";
 import { WelcomeScreen, OnboardingChecklist } from "@/components/onboarding";
 import { api } from "@/lib/api";
 import type {
@@ -458,45 +459,59 @@ export default function StoryPage() {
       {/* Sidebar */}
       <Sidebar activeView={view} onViewChange={setView} />
 
-      {/* Main Content - Three Panes */}
+      {/* Main Content */}
       <main className="app-main">
-        {/* Pane A: Structure Tree */}
-        <div className="pane pane-a relative">
-          <SceneTree
-            acts={acts}
-            selectedSceneId={selectedScene?.id || null}
-            onSelectScene={setSelectedScene}
-            suggestionCounts={suggestionCounts}
+        {view === "canon" ? (
+          /* Canon View - Full Width */
+          <CanonView
+            project={project}
+            characters={characters}
+            rules={rules}
+            onCharactersChange={setCharacters}
+            onRulesChange={setRules}
           />
-
-          {/* Onboarding checklist */}
-          {showOnboardingChecklist && (
-            <div className="absolute bottom-4 left-4 right-4">
-              <OnboardingChecklist
-                items={checklistItems}
-                onDismiss={() => setShowOnboardingChecklist(false)}
+        ) : (
+          /* Story View - Three Panes */
+          <>
+            {/* Pane A: Structure Tree */}
+            <div className="pane pane-a relative">
+              <SceneTree
+                acts={acts}
+                selectedSceneId={selectedScene?.id || null}
+                onSelectScene={setSelectedScene}
+                suggestionCounts={suggestionCounts}
               />
+
+              {/* Onboarding checklist */}
+              {showOnboardingChecklist && (
+                <div className="absolute bottom-4 left-4 right-4">
+                  <OnboardingChecklist
+                    items={checklistItems}
+                    onDismiss={() => setShowOnboardingChecklist(false)}
+                  />
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Pane B: Scene Detail */}
-        <SceneDetail
-          scene={selectedScene}
-          sequenceTitle={sequenceTitle}
-          actTitle={actTitle}
-          characters={characters}
-          location={selectedLocation}
-        />
+            {/* Pane B: Scene Detail */}
+            <SceneDetail
+              scene={selectedScene}
+              sequenceTitle={sequenceTitle}
+              actTitle={actTitle}
+              characters={characters}
+              location={selectedLocation}
+            />
 
-        {/* Pane C: Agent Panel */}
-        <AgentPanel
-          sceneId={selectedScene?.id || null}
-          suggestions={sceneSuggestions}
-          isLoading={isLoadingAgents}
-          onRunAgents={handleRunAgents}
-          onResolve={handleResolve}
-        />
+            {/* Pane C: Agent Panel */}
+            <AgentPanel
+              sceneId={selectedScene?.id || null}
+              suggestions={sceneSuggestions}
+              isLoading={isLoadingAgents}
+              onRunAgents={handleRunAgents}
+              onResolve={handleResolve}
+            />
+          </>
+        )}
       </main>
     </div>
   );
