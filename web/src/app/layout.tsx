@@ -24,7 +24,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "directoris",
+  title: "Directoris",
   description: "The director OS for AI-powered storytelling",
 };
 
