@@ -1,68 +1,30 @@
 """
 directoris AgentOS - FastAPI application for AI story agents.
 
-This is a stub implementation. When ready to implement real agents,
-integrate with the Agno framework.
+Real implementation using OpenRouter for LLM calls.
+ContinuityAgent is implemented; other agents remain stubbed.
 """
 
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from enum import Enum
-from typing import Optional
+import logging
+from fastapi import FastAPI
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv()
 
-# ============ Enums (mirror Prisma schema) ============
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("agentos")
 
-
-class AgentType(str, Enum):
-    CONTINUITY = "CONTINUITY"
-    STORY_STRUCTURE = "STORY_STRUCTURE"
-    CHARACTER = "CHARACTER"
-    STORYBOARD = "STORYBOARD"
-
-
-class SuggestionSeverity(str, Enum):
-    INFO = "INFO"
-    WARNING = "WARNING"
-    ERROR = "ERROR"
-
-
-# ============ Request/Response Models ============
-
-
-class SceneAnalysisRequest(BaseModel):
-    projectId: str
-    sceneId: str
-    agentTypes: list[AgentType]
-    language: Optional[str] = "en"
-
-
-class AgentOutput(BaseModel):
-    agentType: AgentType
-    severity: SuggestionSeverity
-    title: str
-    content: str
-    metadata: Optional[dict] = None
-
-
-class SceneAnalysisResponse(BaseModel):
-    outputs: list[AgentOutput]
-
-
-class ShotSuggestionsRequest(BaseModel):
-    projectId: str
-    sceneId: str
-
-
-class ShotSuggestion(BaseModel):
-    type: str
-    description: str
-    durationSec: Optional[int] = None
-    metadata: Optional[dict] = None
-
-
-class ShotSuggestionsResponse(BaseModel):
-    suggestions: list[ShotSuggestion]
+from .models import (
+    AgentType,
+    SceneAnalysisRequest,
+    SceneAnalysisResponse,
+    ShotSuggestionsRequest,
+    ShotSuggestionsResponse,
+)
+from .tools.directoris import DirectorisClient
+from .agents.continuity import run_continuity_agent
 
 
 # ============ Application ============
@@ -71,7 +33,7 @@ class ShotSuggestionsResponse(BaseModel):
 app = FastAPI(
     title="directoris AgentOS",
     description="AI agents for story analysis and suggestions",
-    version="0.0.1",
+    version="0.1.0",
 )
 
 
@@ -86,16 +48,42 @@ async def scene_analysis(request: SceneAnalysisRequest):
     """
     Run story agents on a scene.
 
-    This is a stub implementation that returns empty outputs.
-    When ready to implement, use Agno agents to analyze the scene
-    by calling the directoris internal API.
+    Fetches context from directoris internal API, runs requested agents,
+    and returns structured outputs.
     """
-    # TODO: Implement real agent logic
-    # 1. Fetch scene data from directoris API
-    # 2. Run requested agents
-    # 3. Return structured outputs
+    logger.info(f"scene-analysis: project={request.projectId} scene={request.sceneId} agents={request.agentTypes}")
 
-    return SceneAnalysisResponse(outputs=[])
+    client = DirectorisClient()
+
+    try:
+        # Fetch context from directoris
+        scene = await client.get_scene(request.sceneId)
+        canon = await client.get_project_canon(request.projectId)
+        all_scenes = await client.get_project_scenes(request.projectId)
+
+        outputs = []
+
+        # Run requested agents
+        if AgentType.CONTINUITY in request.agentTypes:
+            continuity_outputs = await run_continuity_agent(scene, canon, all_scenes)
+            outputs.extend(continuity_outputs)
+            logger.info(f"continuity: scene={request.sceneId} issues={len(continuity_outputs)}")
+
+        # Other agents stay stubbed for now
+        # if AgentType.STORY_STRUCTURE in request.agentTypes:
+        #     structure_outputs = await run_structure_agent(scene, canon)
+        #     outputs.extend(structure_outputs)
+
+        # if AgentType.CHARACTER in request.agentTypes:
+        #     character_outputs = await run_character_agent(scene, canon)
+        #     outputs.extend(character_outputs)
+
+        return SceneAnalysisResponse(outputs=outputs)
+    except Exception as e:
+        logger.error(f"scene-analysis failed: project={request.projectId} scene={request.sceneId} error={e}")
+        raise
+    finally:
+        await client.close()
 
 
 @app.post("/agents/shot-suggestions", response_model=ShotSuggestionsResponse)
@@ -107,5 +95,4 @@ async def shot_suggestions(request: ShotSuggestionsRequest):
     When ready to implement, use Agno storyboard agent to suggest shots.
     """
     # TODO: Implement real storyboard agent
-
     return ShotSuggestionsResponse(suggestions=[])
