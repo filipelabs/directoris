@@ -54,9 +54,9 @@ export function SceneDetail({
     );
   }
 
-  // Get characters in this scene
-  const sceneCharacters = scene.characters
-    ?.map((sc) => characters.find((c) => c.id === sc.characterId))
+  // Get characters in this scene (ensure array is always defined)
+  const sceneCharacters = (scene.characters || [])
+    .map((sc) => characters.find((c) => c.id === sc.characterId))
     .filter(Boolean) as Character[];
 
   return (

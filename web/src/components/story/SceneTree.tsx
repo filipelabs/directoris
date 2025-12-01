@@ -13,16 +13,19 @@ interface SceneTreeProps {
 }
 
 export function SceneTree({
-  acts,
+  acts = [],
   selectedSceneId,
   onSelectScene,
   suggestionCounts = {},
 }: SceneTreeProps) {
+  // Ensure acts is always an array
+  const safeActs = acts || [];
+
   const [expandedActs, setExpandedActs] = useState<Set<string>>(
-    new Set(acts.map((a) => a.id))
+    new Set(safeActs.map((a) => a.id))
   );
   const [expandedSequences, setExpandedSequences] = useState<Set<string>>(
-    new Set(acts.flatMap((a) => a.sequences?.map((s) => s.id) || []))
+    new Set(safeActs.flatMap((a) => a.sequences?.map((s) => s.id) || []))
   );
 
   const toggleAct = (actId: string) => {
@@ -75,7 +78,7 @@ export function SceneTree({
 
       {/* Tree */}
       <div className="flex flex-col">
-        {acts.map((act) => (
+        {safeActs.map((act) => (
           <ActNode
             key={act.id}
             act={act}
@@ -91,7 +94,7 @@ export function SceneTree({
       </div>
 
       {/* Empty state */}
-      {acts.length === 0 && (
+      {safeActs.length === 0 && (
         <div className="px-4 py-8 text-center">
           <p className="text-text-subtle text-caption">
             No acts yet. Create your first act to get started.

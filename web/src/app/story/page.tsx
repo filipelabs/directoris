@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { TopBar, Sidebar } from "@/components/shell";
 import { SceneTree, SceneDetail } from "@/components/story";
 import { AgentPanel } from "@/components/agents";
+import { WelcomeScreen, OnboardingChecklist } from "@/components/onboarding";
 import { api } from "@/lib/api";
 import type {
   User,
@@ -13,9 +14,20 @@ import type {
   Scene,
   Character,
   Location,
+  WorldRule,
   AgentOutput,
   AgentType,
 } from "@/types";
+
+interface WizardData {
+  projectType: "story" | "content" | null;
+  projectName: string;
+  logline: string;
+  characters: { id: string; name: string; role: string }[];
+  rules: { id: string; title: string; description: string }[];
+  structureTemplate: "quick" | "three_act" | "custom";
+  firstSceneTitle: string;
+}
 
 export default function StoryPage() {
   const router = useRouter();
@@ -25,10 +37,13 @@ export default function StoryPage() {
   const [acts, setActs] = useState<Act[]>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [rules, setRules] = useState<WorldRule[]>([]);
   const [selectedScene, setSelectedScene] = useState<Scene | null>(null);
   const [suggestions, setSuggestions] = useState<AgentOutput[]>([]);
   const [isLoadingAgents, setIsLoadingAgents] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showOnboardingChecklist, setShowOnboardingChecklist] = useState(false);
+  const [hasRunAgents, setHasRunAgents] = useState(false);
 
   // Load initial data
   useEffect(() => {
@@ -46,15 +61,29 @@ export default function StoryPage() {
           setProject(proj);
 
           // Load project data
-          const [actsData, charsData, locsData] = await Promise.all([
+          const [actsData, charsData, locsData, rulesData] = await Promise.all([
             api.acts.list(proj.id),
             api.characters.list(proj.id),
             api.locations.list(proj.id),
+            api.rules.list(proj.id),
           ]);
 
-          setActs(actsData);
-          setCharacters(charsData);
-          setLocations(locsData);
+          // Ensure all arrays are defined (defensive)
+          setActs(actsData || []);
+          setCharacters(charsData || []);
+          setLocations(locsData || []);
+          setRules(rulesData || []);
+
+          // Show onboarding checklist for new projects
+          const safeActsData = actsData || [];
+          const safeCharsData = charsData || [];
+          const safeRulesData = rulesData || [];
+          const hasScenes = safeActsData.some(act =>
+            act.sequences?.some(seq => seq.scenes && seq.scenes.length > 0)
+          );
+          if (safeCharsData.length <= 1 || safeRulesData.length <= 1 || !hasScenes) {
+            setShowOnboardingChecklist(true);
+          }
         }
       } catch (err) {
         console.error("Failed to load data:", err);
@@ -77,6 +106,9 @@ export default function StoryPage() {
       try {
         const data = await api.scenes.getSuggestions(selectedScene!.id);
         setSuggestions(data);
+        if (data.length > 0) {
+          setHasRunAgents(true);
+        }
       } catch (err) {
         console.error("Failed to load suggestions:", err);
       }
@@ -97,6 +129,7 @@ export default function StoryPage() {
           agentTypes
         );
         setSuggestions((prev) => [...newSuggestions, ...prev]);
+        setHasRunAgents(true);
       } catch (err) {
         console.error("Failed to run agents:", err);
       } finally {
@@ -120,6 +153,119 @@ export default function StoryPage() {
     },
     []
   );
+
+  // Create project from wizard
+  const handleCreateProject = async (data: WizardData) => {
+    try {
+      // 1. Create project
+      const newProject = await api.projects.create({
+        name: data.projectName,
+        description: data.logline || undefined,
+      });
+
+      // 2. Create characters
+      const createdCharacters: Character[] = [];
+      for (const char of data.characters) {
+        if (char.name.trim()) {
+          const created = await api.characters.create(newProject.id, {
+            name: char.name,
+            archetype: char.role,
+          });
+          createdCharacters.push(created);
+        }
+      }
+
+      // 3. Create rules
+      const createdRules: WorldRule[] = [];
+      for (const rule of data.rules) {
+        if (rule.title.trim()) {
+          const created = await api.rules.create(newProject.id, {
+            title: rule.title,
+            description: rule.description || rule.title,
+          });
+          createdRules.push(created);
+        }
+      }
+
+      // 4. Create structure based on template
+      let createdActs: Act[] = [];
+
+      if (data.structureTemplate !== "custom") {
+        if (data.structureTemplate === "quick") {
+          // Quick start: 1 act, 1 sequence, 1 scene
+          const act = await api.acts.create(newProject.id, {
+            index: 1,
+            title: "Act I",
+          });
+          const seq = await api.sequences.create(act.id, {
+            index: 1,
+            title: "Opening",
+          });
+          await api.scenes.create(seq.id, {
+            index: 1,
+            title: data.firstSceneTitle || "Opening Scene",
+          });
+
+          // Reload acts with nested data
+          createdActs = await api.acts.list(newProject.id);
+        } else if (data.structureTemplate === "three_act") {
+          // Three-act structure
+          const actTitles = ["Act I - Setup", "Act II - Confrontation", "Act III - Resolution"];
+          const seqTemplates = [
+            ["Opening", "Inciting Incident"],
+            ["Rising Action", "Midpoint", "Complications"],
+            ["Crisis", "Climax", "Resolution"],
+          ];
+
+          for (let i = 0; i < 3; i++) {
+            const act = await api.acts.create(newProject.id, {
+              index: i + 1,
+              title: actTitles[i],
+            });
+
+            for (let j = 0; j < seqTemplates[i].length; j++) {
+              const seq = await api.sequences.create(act.id, {
+                index: j + 1,
+                title: seqTemplates[i][j],
+              });
+
+              // Create first scene only in first sequence
+              if (i === 0 && j === 0) {
+                await api.scenes.create(seq.id, {
+                  index: 1,
+                  title: data.firstSceneTitle || "Opening Scene",
+                });
+              }
+            }
+          }
+
+          createdActs = await api.acts.list(newProject.id);
+        }
+      }
+
+      // Update state (ensure arrays are defined)
+      const safeCreatedActs = createdActs || [];
+      setProject(newProject);
+      setCharacters(createdCharacters);
+      setRules(createdRules);
+      setActs(safeCreatedActs);
+      setShowOnboardingChecklist(true);
+
+      // Select the first scene if available
+      if (safeCreatedActs.length > 0) {
+        const firstAct = safeCreatedActs[0];
+        if (firstAct.sequences && firstAct.sequences.length > 0) {
+          const firstSeq = firstAct.sequences[0];
+          if (firstSeq.scenes && firstSeq.scenes.length > 0) {
+            setSelectedScene(firstSeq.scenes[0]);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to create project:", err);
+      throw err;
+    }
+  };
 
   // Find context for selected scene
   const findSceneContext = () => {
@@ -156,6 +302,39 @@ export default function StoryPage() {
     ? suggestions.filter((s) => s.sceneId === selectedScene.id)
     : [];
 
+  // Check if there are any scenes
+  const hasScenes = acts.some(act =>
+    act.sequences?.some(seq => seq.scenes && seq.scenes.length > 0)
+  );
+
+  // Onboarding checklist items
+  const checklistItems = [
+    {
+      id: "character",
+      label: "Add at least 1 character",
+      completed: characters.length > 0,
+      action: () => setView("canon"),
+    },
+    {
+      id: "rule",
+      label: "Add at least 1 world rule",
+      completed: rules.length > 0,
+      action: () => setView("canon"),
+    },
+    {
+      id: "scene",
+      label: "Create at least 1 scene",
+      completed: hasScenes,
+      action: () => setView("story"),
+    },
+    {
+      id: "agents",
+      label: "Run agents on a scene",
+      completed: hasRunAgents,
+      action: selectedScene ? () => handleRunAgents() : undefined,
+    },
+  ];
+
   // Loading state
   if (isLoading) {
     return (
@@ -174,32 +353,13 @@ export default function StoryPage() {
     );
   }
 
-  // Empty state - no projects
+  // No projects - show welcome/onboarding
   if (!project) {
     return (
-      <div className="app-shell">
-        <TopBar project={null} user={user} />
-        <Sidebar activeView={view} onViewChange={setView} />
-        <main className="app-main">
-          <div className="col-span-3 flex items-center justify-center">
-            <div className="text-center max-w-md">
-              <div className="w-12 h-12 rounded-full bg-accent-primary/20 flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-accent-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-              </div>
-              <h2 className="text-lg font-medium text-text-primary mb-2">No Projects Yet</h2>
-              <p className="text-text-secondary mb-4">Create your first story project to get started.</p>
-              <button
-                onClick={() => {/* TODO: Create project modal */}}
-                className="inline-flex items-center px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors"
-              >
-                Create Project
-              </button>
-            </div>
-          </div>
-        </main>
-      </div>
+      <WelcomeScreen
+        userName={user?.name}
+        onCreateProject={handleCreateProject}
+      />
     );
   }
 
@@ -214,12 +374,24 @@ export default function StoryPage() {
       {/* Main Content - Three Panes */}
       <main className="app-main">
         {/* Pane A: Structure Tree */}
-        <SceneTree
-          acts={acts}
-          selectedSceneId={selectedScene?.id || null}
-          onSelectScene={setSelectedScene}
-          suggestionCounts={suggestionCounts}
-        />
+        <div className="pane pane-a relative">
+          <SceneTree
+            acts={acts}
+            selectedSceneId={selectedScene?.id || null}
+            onSelectScene={setSelectedScene}
+            suggestionCounts={suggestionCounts}
+          />
+
+          {/* Onboarding checklist */}
+          {showOnboardingChecklist && (
+            <div className="absolute bottom-4 left-4 right-4">
+              <OnboardingChecklist
+                items={checklistItems}
+                onDismiss={() => setShowOnboardingChecklist(false)}
+              />
+            </div>
+          )}
+        </div>
 
         {/* Pane B: Scene Detail */}
         <SceneDetail

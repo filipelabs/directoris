@@ -263,3 +263,15 @@ export interface CreateCharacterDto {
 export interface RunAgentsDto {
   agentTypes?: AgentType[];
 }
+
+export interface CreateWorldRuleDto {
+  title: string;
+  description: string;
+  category?: string;
+}
+
+export interface CreateLocationDto {
+  name: string;
+  description?: string;
+  imageUrl?: string;
+}

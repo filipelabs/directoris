@@ -7,6 +7,7 @@ import type {
   Session,
   Project,
   Act,
+  Sequence,
   Scene,
   Character,
   WorldRule,
@@ -18,6 +19,7 @@ import type {
   CreateSequenceDto,
   CreateSceneDto,
   CreateCharacterDto,
+  CreateWorldRuleDto,
 } from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -214,6 +216,21 @@ export const rules = {
     apiFetch<WorldRule[]>(`/projects/${projectId}/rules`),
 
   get: (id: string) => apiFetch<WorldRule>(`/rules/${id}`),
+
+  create: (projectId: string, data: CreateWorldRuleDto) =>
+    apiFetch<WorldRule>(`/projects/${projectId}/rules`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: Partial<CreateWorldRuleDto>) =>
+    apiFetch<WorldRule>(`/rules/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    apiFetch<void>(`/rules/${id}`, { method: "DELETE" }),
 };
 
 // ─── Locations ─────────────────────────────────────────────────────────────
