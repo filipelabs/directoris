@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { TopBar, Sidebar } from "@/components/shell";
 import { SceneTree, SceneDetail } from "@/components/story";
 import { AgentPanel } from "@/components/agents";
@@ -17,6 +18,7 @@ import type {
 } from "@/types";
 
 export default function StoryPage() {
+  const router = useRouter();
   const [view, setView] = useState<"story" | "canon" | "agents">("story");
   const [user, setUser] = useState<User | null>(null);
   const [project, setProject] = useState<Project | null>(null);
@@ -27,13 +29,11 @@ export default function StoryPage() {
   const [suggestions, setSuggestions] = useState<AgentOutput[]>([]);
   const [isLoadingAgents, setIsLoadingAgents] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Load initial data
   useEffect(() => {
     async function loadData() {
       setIsLoading(true);
-      setError(null);
       try {
         // Try to get session
         const session = await api.auth.getSession();
@@ -58,14 +58,16 @@ export default function StoryPage() {
         }
       } catch (err) {
         console.error("Failed to load data:", err);
-        setError("Failed to connect. Please ensure the backend is running and you're logged in.");
+        // Redirect to login on auth failure
+        router.replace("/login");
+        return;
       } finally {
         setIsLoading(false);
       }
     }
 
     loadData();
-  }, []);
+  }, [router]);
 
   // Load suggestions when scene changes
   useEffect(() => {
@@ -165,35 +167,6 @@ export default function StoryPage() {
             <div className="text-center">
               <div className="w-8 h-8 border-2 border-accent-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
               <p className="text-text-secondary">Loading...</p>
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <div className="app-shell">
-        <TopBar project={null} user={null} />
-        <Sidebar activeView={view} onViewChange={setView} />
-        <main className="app-main">
-          <div className="col-span-3 flex items-center justify-center">
-            <div className="text-center max-w-md">
-              <div className="w-12 h-12 rounded-full bg-severity-error/20 flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-severity-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <h2 className="text-lg font-medium text-text-primary mb-2">Connection Error</h2>
-              <p className="text-text-secondary mb-4">{error}</p>
-              <a
-                href="/api/v1/auth/login"
-                className="inline-flex items-center px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors"
-              >
-                Sign in with WorkOS
-              </a>
             </div>
           </div>
         </main>

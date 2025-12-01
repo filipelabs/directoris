@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { api } from "@/lib/api";
 import type { Project, User } from "@/types";
 
 interface TopBarProps {
@@ -13,7 +13,6 @@ interface TopBarProps {
 export function TopBar({ project, user }: TopBarProps) {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -25,16 +24,8 @@ export function TopBar({ project, user }: TopBarProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleSignOut = async () => {
-    try {
-      await fetch("http://localhost:3000/api/v1/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-      router.push("/login");
-    } catch (error) {
-      console.error("Sign out error:", error);
-    }
+  const handleSignOut = () => {
+    api.auth.logout();
   };
 
   return (

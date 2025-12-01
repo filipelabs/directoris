@@ -72,7 +72,12 @@ export const auth = {
     window.location.href = `${API_BASE}${API_PREFIX}/auth/login?screen_hint=${screenHint}`;
   },
 
-  logout: () => apiFetch<void>("/auth/logout", { method: "POST" }),
+  logout: () => {
+    const logoutUrl = `${API_BASE}${API_PREFIX}/auth/logout`;
+    console.log('[API] Logging out, navigating to:', logoutUrl);
+    console.log('[API] API_BASE:', API_BASE);
+    window.location.href = logoutUrl;
+  },
 };
 
 // ─── Projects ──────────────────────────────────────────────────────────────

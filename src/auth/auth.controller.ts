@@ -64,11 +64,38 @@ export class AuthController {
     }
   }
 
-  @Post('logout')
-  @ApiOperation({ summary: 'Logout and clear session' })
-  logout(@Res() res: Response) {
-    res.clearCookie('wos-session');
-    res.status(HttpStatus.OK).json({ message: 'Logged out successfully' });
+  @Public()
+  @Get('logout')
+  @ApiOperation({ summary: 'Logout and redirect to WorkOS logout' })
+  async logout(@Req() req: Request, @Res() res: Response) {
+    console.log('[Logout] Starting logout process');
+    console.log('[Logout] Cookies:', JSON.stringify(req.cookies));
+
+    const sessionCookie = req.cookies?.['wos-session'];
+    const frontendUrl = this.configService.get<string>('frontendUrl');
+
+    console.log('[Logout] Session cookie present:', !!sessionCookie);
+    console.log('[Logout] Session cookie length:', sessionCookie?.length);
+
+    // Clear the local cookie
+    res.clearCookie('wos-session', { path: '/' });
+    console.log('[Logout] Cleared local cookie');
+
+    // Try to get WorkOS logout URL
+    if (sessionCookie) {
+      console.log('[Logout] Attempting to get WorkOS logout URL...');
+      const logoutUrl = await this.authService.getLogoutUrl(sessionCookie);
+      console.log('[Logout] WorkOS logout URL:', logoutUrl);
+      if (logoutUrl) {
+        // Redirect to WorkOS logout (user will be redirected to app homepage after)
+        console.log('[Logout] Redirecting to WorkOS logout');
+        return res.redirect(logoutUrl);
+      }
+    }
+
+    // Fallback: just redirect to login page
+    console.log('[Logout] Fallback: redirecting to', `${frontendUrl}/login`);
+    res.redirect(`${frontendUrl}/login`);
   }
 
   @Get('session')

@@ -14,8 +14,10 @@ export class AuthService {
     private configService: ConfigService,
     private prisma: PrismaService,
   ) {
-    this.workos = new WorkOS(this.configService.get<string>('workos.apiKey'));
     this.clientId = this.configService.get<string>('workos.clientId')!;
+    this.workos = new WorkOS(this.configService.get<string>('workos.apiKey'), {
+      clientId: this.clientId,
+    });
     this.cookiePassword = this.configService.get<string>(
       'workos.cookiePassword',
     )!;
@@ -83,6 +85,40 @@ export class AuthService {
 
       return result;
     } catch {
+      return null;
+    }
+  }
+
+  async getLogoutUrl(sessionData: string): Promise<string | null> {
+    try {
+      console.log('[AuthService.getLogoutUrl] Attempting to authenticate session');
+      const result =
+        await this.workos.userManagement.authenticateWithSessionCookie({
+          sessionData,
+          cookiePassword: this.cookiePassword,
+        });
+
+      console.log('[AuthService.getLogoutUrl] Auth result:', JSON.stringify(result, null, 2));
+
+      if (!result.authenticated) {
+        console.log('[AuthService.getLogoutUrl] Session not authenticated');
+        return null;
+      }
+
+      // Get session ID from the access token
+      const accessToken = result.accessToken;
+      // Decode JWT to get session ID (sid claim)
+      const payload = JSON.parse(
+        Buffer.from(accessToken.split('.')[1], 'base64').toString(),
+      );
+      const sessionId = payload.sid;
+      console.log('[AuthService.getLogoutUrl] Session ID from JWT:', sessionId);
+
+      const logoutUrl = this.workos.userManagement.getLogoutUrl({ sessionId });
+      console.log('[AuthService.getLogoutUrl] Generated logout URL:', logoutUrl);
+      return logoutUrl;
+    } catch (error) {
+      console.error('[AuthService.getLogoutUrl] Error:', error);
       return null;
     }
   }
