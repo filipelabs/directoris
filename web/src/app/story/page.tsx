@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { TopBar, Sidebar } from "@/components/shell";
+import { TopBar, Sidebar, NewProjectModal } from "@/components/shell";
 import { SceneTree, SceneDetail } from "@/components/story";
 import { AgentPanel } from "@/components/agents";
 import { WelcomeScreen, OnboardingChecklist } from "@/components/onboarding";
@@ -19,6 +19,8 @@ import type {
   AgentType,
 } from "@/types";
 
+const LAST_PROJECT_KEY = "directoris:lastProjectId";
+
 interface WizardData {
   projectType: "story" | "content" | null;
   projectName: string;
@@ -33,6 +35,7 @@ export default function StoryPage() {
   const router = useRouter();
   const [view, setView] = useState<"story" | "canon" | "agents">("story");
   const [user, setUser] = useState<User | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [project, setProject] = useState<Project | null>(null);
   const [acts, setActs] = useState<Act[]>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
@@ -44,6 +47,38 @@ export default function StoryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showOnboardingChecklist, setShowOnboardingChecklist] = useState(false);
   const [hasRunAgents, setHasRunAgents] = useState(false);
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+
+  // Load project data for a specific project
+  const loadProjectData = useCallback(async (proj: Project) => {
+    const [actsData, charsData, locsData, rulesData] = await Promise.all([
+      api.acts.list(proj.id),
+      api.characters.list(proj.id),
+      api.locations.list(proj.id),
+      api.rules.list(proj.id),
+    ]);
+
+    // Ensure all arrays are defined (defensive)
+    setActs(actsData || []);
+    setCharacters(charsData || []);
+    setLocations(locsData || []);
+    setRules(rulesData || []);
+    setSelectedScene(null);
+    setSuggestions([]);
+
+    // Show onboarding checklist for new projects
+    const safeActsData = actsData || [];
+    const safeCharsData = charsData || [];
+    const safeRulesData = rulesData || [];
+    const hasScenes = safeActsData.some(act =>
+      act.sequences?.some(seq => seq.scenes && seq.scenes.length > 0)
+    );
+    if (safeCharsData.length <= 1 || safeRulesData.length <= 1 || !hasScenes) {
+      setShowOnboardingChecklist(true);
+    } else {
+      setShowOnboardingChecklist(false);
+    }
+  }, []);
 
   // Load initial data
   useEffect(() => {
@@ -55,35 +90,22 @@ export default function StoryPage() {
         setUser(session.user);
 
         // Get projects
-        const projects = await api.projects.list();
-        if (projects.length > 0) {
-          const proj = projects[0];
+        const projectsList = await api.projects.list();
+        setProjects(projectsList || []);
+
+        if (projectsList && projectsList.length > 0) {
+          // Check localStorage for last selected project
+          const lastProjectId = localStorage.getItem(LAST_PROJECT_KEY);
+          const lastProject = lastProjectId
+            ? projectsList.find(p => p.id === lastProjectId)
+            : null;
+
+          // Use last project or default to first
+          const proj = lastProject || projectsList[0];
           setProject(proj);
 
           // Load project data
-          const [actsData, charsData, locsData, rulesData] = await Promise.all([
-            api.acts.list(proj.id),
-            api.characters.list(proj.id),
-            api.locations.list(proj.id),
-            api.rules.list(proj.id),
-          ]);
-
-          // Ensure all arrays are defined (defensive)
-          setActs(actsData || []);
-          setCharacters(charsData || []);
-          setLocations(locsData || []);
-          setRules(rulesData || []);
-
-          // Show onboarding checklist for new projects
-          const safeActsData = actsData || [];
-          const safeCharsData = charsData || [];
-          const safeRulesData = rulesData || [];
-          const hasScenes = safeActsData.some(act =>
-            act.sequences?.some(seq => seq.scenes && seq.scenes.length > 0)
-          );
-          if (safeCharsData.length <= 1 || safeRulesData.length <= 1 || !hasScenes) {
-            setShowOnboardingChecklist(true);
-          }
+          await loadProjectData(proj);
         }
       } catch (err) {
         console.error("Failed to load data:", err);
@@ -96,7 +118,7 @@ export default function StoryPage() {
     }
 
     loadData();
-  }, [router]);
+  }, [router, loadProjectData]);
 
   // Load suggestions when scene changes
   useEffect(() => {
@@ -154,7 +176,24 @@ export default function StoryPage() {
     []
   );
 
-  // Create project from wizard
+  // Switch to a different project
+  const handleSwitchProject = useCallback(
+    async (proj: Project) => {
+      if (proj.id === project?.id) return;
+
+      setProject(proj);
+      localStorage.setItem(LAST_PROJECT_KEY, proj.id);
+      await loadProjectData(proj);
+    },
+    [project?.id, loadProjectData]
+  );
+
+  // Open new project modal
+  const handleOpenNewProjectModal = useCallback(() => {
+    setShowNewProjectModal(true);
+  }, []);
+
+  // Create project from wizard (also used by modal)
   const handleCreateProject = async (data: WizardData) => {
     try {
       // 1. Create project
@@ -245,11 +284,14 @@ export default function StoryPage() {
 
       // Update state (ensure arrays are defined)
       const safeCreatedActs = createdActs || [];
+      setProjects(prev => [newProject, ...prev]);
       setProject(newProject);
       setCharacters(createdCharacters);
       setRules(createdRules);
       setActs(safeCreatedActs);
+      setLocations([]);
       setShowOnboardingChecklist(true);
+      localStorage.setItem(LAST_PROJECT_KEY, newProject.id);
 
       // Select the first scene if available
       if (safeCreatedActs.length > 0) {
@@ -366,7 +408,20 @@ export default function StoryPage() {
   return (
     <div className="app-shell">
       {/* Top Bar */}
-      <TopBar project={project} user={user} />
+      <TopBar
+        project={project}
+        projects={projects}
+        user={user}
+        onSelectProject={handleSwitchProject}
+        onCreateProject={handleOpenNewProjectModal}
+      />
+
+      {/* New Project Modal */}
+      <NewProjectModal
+        isOpen={showNewProjectModal}
+        onClose={() => setShowNewProjectModal(false)}
+        onCreateProject={handleCreateProject}
+      />
 
       {/* Sidebar */}
       <Sidebar activeView={view} onViewChange={setView} />

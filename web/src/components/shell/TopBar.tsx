@@ -3,14 +3,24 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "@/lib/api";
+import { ProjectSelector } from "./ProjectSelector";
 import type { Project, User } from "@/types";
 
 interface TopBarProps {
   project?: Project | null;
+  projects?: Project[];
   user?: User | null;
+  onSelectProject?: (project: Project) => void;
+  onCreateProject?: () => void;
 }
 
-export function TopBar({ project, user }: TopBarProps) {
+export function TopBar({
+  project,
+  projects = [],
+  user,
+  onSelectProject,
+  onCreateProject,
+}: TopBarProps) {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -30,13 +40,23 @@ export function TopBar({ project, user }: TopBarProps) {
 
   return (
     <header className="app-topbar flex items-center justify-between px-4">
-      {/* Left: Brand + Project */}
+      {/* Left: Brand + Project Selector */}
       <div className="flex items-center gap-4">
         <span className="text-mono text-text-subtle text-sm tracking-wider uppercase">
           directoris
         </span>
 
-        {project && (
+        {projects.length > 0 && onSelectProject && onCreateProject ? (
+          <>
+            <span className="text-text-subtle">/</span>
+            <ProjectSelector
+              projects={projects}
+              currentProject={project || null}
+              onSelectProject={onSelectProject}
+              onCreateNew={onCreateProject}
+            />
+          </>
+        ) : project ? (
           <>
             <span className="text-text-subtle">/</span>
             <motion.span
@@ -47,7 +67,7 @@ export function TopBar({ project, user }: TopBarProps) {
               {project.name}
             </motion.span>
           </>
-        )}
+        ) : null}
       </div>
 
       {/* Right: Environment + Avatar */}
