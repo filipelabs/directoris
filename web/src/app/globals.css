@@ -1,0 +1,431 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DIRECTORIS DESIGN SYSTEM
+   Cinematic control room aesthetic - dark, rich, story-first
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ─── Base Colors ─────────────────────────────────────────────────────── */
+  --bg-app: #050712;
+  --bg-surface: #0B0F1A;
+  --bg-elevated: #151A26;
+  --bg-hover: #1A1F2E;
+
+  --border-subtle: #232836;
+  --border-strong: #2E3545;
+  --border-focus: #7C5CFF;
+
+  --text-primary: #F5F5F8;
+  --text-muted: #9BA0B5;
+  --text-subtle: #6D7386;
+
+  /* ─── Accent Colors ───────────────────────────────────────────────────── */
+  --accent-primary: #7C5CFF;
+  --accent-primary-soft: rgba(124, 92, 255, 0.15);
+  --accent-primary-hover: #9178FF;
+  --accent-secondary: #1EC8A5;
+  --accent-secondary-soft: rgba(30, 200, 165, 0.15);
+
+  /* ─── Semantic / Status ───────────────────────────────────────────────── */
+  --status-info: #3B82F6;
+  --status-info-soft: rgba(59, 130, 246, 0.15);
+  --status-warning: #FBBF24;
+  --status-warning-soft: rgba(251, 191, 36, 0.15);
+  --status-error: #F97373;
+  --status-error-soft: rgba(249, 115, 115, 0.15);
+  --status-success: #22C55E;
+  --status-success-soft: rgba(34, 197, 94, 0.15);
+
+  /* ─── Spacing Scale (4px base) ────────────────────────────────────────── */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+  --space-3xl: 48px;
+
+  /* ─── Border Radius ───────────────────────────────────────────────────── */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-pill: 999px;
+
+  /* ─── Typography Scale ────────────────────────────────────────────────── */
+  --font-display: var(--font-syne);
+  --font-body: var(--font-dm-sans);
+  --font-mono: var(--font-jetbrains-mono);
+
+  --text-display: 2rem;
+  --text-title: 1.4rem;
+  --text-subtitle: 1.1rem;
+  --text-body: 0.95rem;
+  --text-caption: 0.8rem;
+  --text-micro: 0.7rem;
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.45;
+  --leading-relaxed: 1.6;
+
+  /* ─── Shadows ─────────────────────────────────────────────────────────── */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-panel: 0 18px 45px rgba(0, 0, 0, 0.45);
+  --shadow-glow: 0 0 20px rgba(124, 92, 255, 0.25);
+
+  /* ─── Layout ──────────────────────────────────────────────────────────── */
+  --sidebar-width: 240px;
+  --topbar-height: 48px;
+  --pane-a-width: 280px;
+  --pane-c-width: 360px;
+
+  /* ─── Transitions ─────────────────────────────────────────────────────── */
+  --transition-fast: 120ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow: 350ms ease;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAILWIND THEME EXTENSION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@theme inline {
+  --color-bg-app: var(--bg-app);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-hover: var(--bg-hover);
+
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-border-focus: var(--border-focus);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
+
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-primary-soft: var(--accent-primary-soft);
+  --color-accent-secondary: var(--accent-secondary);
+  --color-accent-secondary-soft: var(--accent-secondary-soft);
+
+  --color-status-info: var(--status-info);
+  --color-status-info-soft: var(--status-info-soft);
+  --color-status-warning: var(--status-warning);
+  --color-status-warning-soft: var(--status-warning-soft);
+  --color-status-error: var(--status-error);
+  --color-status-error-soft: var(--status-error-soft);
+  --color-status-success: var(--status-success);
+  --color-status-success-soft: var(--status-success-soft);
+
+  --font-display: var(--font-syne);
+  --font-body: var(--font-dm-sans);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BASE STYLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: var(--text-body);
+  line-height: var(--leading-normal);
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* ─── Selection ─────────────────────────────────────────────────────────── */
+::selection {
+  background: var(--accent-primary-soft);
+  color: var(--text-primary);
+}
+
+/* ─── Scrollbars ────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-subtle);
+}
+
+/* ─── Focus States ──────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TYPOGRAPHY UTILITIES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.text-display {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: var(--text-display);
+  font-weight: 700;
+  line-height: var(--leading-tight);
+  letter-spacing: -0.02em;
+}
+
+.text-title {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: var(--text-title);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  letter-spacing: -0.01em;
+}
+
+.text-subtitle {
+  font-size: var(--text-subtitle);
+  font-weight: 500;
+  line-height: var(--leading-normal);
+}
+
+.text-body {
+  font-size: var(--text-body);
+  font-weight: 400;
+  line-height: var(--leading-normal);
+}
+
+.text-caption {
+  font-size: var(--text-caption);
+  font-weight: 500;
+  line-height: var(--leading-normal);
+  letter-spacing: 0.01em;
+}
+
+.text-mono {
+  font-family: var(--font-mono), monospace;
+  font-size: var(--text-caption);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMPONENT PRIMITIVES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Chips / Pills ─────────────────────────────────────────────────────── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-caption);
+  color: var(--text-muted);
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.chip:hover {
+  border-color: var(--accent-primary-soft);
+  color: var(--text-primary);
+}
+
+.chip-accent {
+  background: var(--accent-primary-soft);
+  border-color: transparent;
+  color: var(--accent-primary);
+}
+
+/* ─── Severity Chips ────────────────────────────────────────────────────── */
+.severity-error {
+  background: var(--status-error-soft);
+  color: var(--status-error);
+  border-color: transparent;
+}
+
+.severity-warning {
+  background: var(--status-warning-soft);
+  color: var(--status-warning);
+  border-color: transparent;
+}
+
+.severity-info {
+  background: var(--status-info-soft);
+  color: var(--status-info);
+  border-color: transparent;
+}
+
+/* ─── Cards / Panels ────────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.card-elevated {
+  background: var(--bg-elevated);
+}
+
+/* ─── Buttons ───────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-md);
+  font-size: var(--text-body);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: none;
+}
+
+.btn-primary {
+  background: var(--accent-primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: var(--accent-primary-hover);
+  box-shadow: var(--shadow-glow);
+}
+
+.btn-secondary {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+}
+
+.btn-secondary:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+/* ─── Inputs ────────────────────────────────────────────────────────────── */
+.input {
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--text-body);
+  transition: all var(--transition-fast);
+}
+
+.input:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-primary-soft);
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--text-subtle);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LAYOUT UTILITIES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.app-shell {
+  display: grid;
+  grid-template-rows: var(--topbar-height) 1fr;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  height: 100vh;
+  width: 100vw;
+}
+
+.app-topbar {
+  grid-column: 1 / -1;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.app-sidebar {
+  background: var(--bg-app);
+  border-right: 1px solid var(--border-subtle);
+  overflow-y: auto;
+}
+
+.app-main {
+  display: grid;
+  grid-template-columns: var(--pane-a-width) 1fr var(--pane-c-width);
+  overflow: hidden;
+}
+
+.pane {
+  overflow-y: auto;
+  height: 100%;
+}
+
+.pane-a {
+  background: var(--bg-app);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.pane-b {
+  background: var(--bg-surface);
+}
+
+.pane-c {
+  background: var(--bg-app);
+  border-left: 1px solid var(--border-subtle);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANIMATION UTILITIES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.animate-fade-in {
+  animation: fade-in var(--transition-normal) ease;
+}
+
+.animate-slide-up {
+  animation: slide-up var(--transition-normal) ease;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease infinite;
+}
