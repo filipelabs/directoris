@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { api } from "@/lib/api";
 
 // Film sprocket holes component
 function SprocketHoles({ side }: { side: "left" | "right" }) {
@@ -114,7 +115,7 @@ export default function LoginPage() {
   }, []);
 
   const handleSignIn = () => {
-    window.location.href = "/api/v1/auth/login";
+    api.auth.login();
   };
 
   return (
