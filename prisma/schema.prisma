@@ -1,0 +1,303 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============ AUTH & USERS ============
+
+model User {
+  id        String   @id @default(cuid())
+  workosId  String   @unique
+  email     String   @unique
+  name      String?
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projectsOwned Project[]           @relation("ProjectOwner")
+  memberships   ProjectMembership[]
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  ownerId     String
+  owner       User     @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  memberships  ProjectMembership[]
+  acts         Act[]
+  characters   Character[]
+  locations    Location[]
+  rules        WorldRule[]
+  agentOutputs AgentOutput[]
+}
+
+model ProjectMembership {
+  id        String      @id @default(cuid())
+  role      ProjectRole
+  userId    String
+  projectId String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+
+  @@unique([userId, projectId])
+  @@index([projectId])
+  @@index([userId])
+}
+
+enum ProjectRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+// ============ CANON: CHARACTERS ============
+
+model Character {
+  id         String   @id @default(cuid())
+  name       String
+  bio        String?
+  archetype  String?
+  voiceNotes String?
+  imageUrl   String?
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  scenes            SceneCharacter[]
+  arcs              CharacterArc[]
+  facts             CharacterFact[]
+  relationshipsFrom CharacterRelationship[] @relation("FromCharacter")
+  relationshipsTo   CharacterRelationship[] @relation("ToCharacter")
+
+  @@index([projectId])
+}
+
+model CharacterArc {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  season      Int?
+  title       String
+  summary     String?
+  startState  String?
+  endState    String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  beats CharacterArcBeat[]
+
+  @@index([characterId])
+}
+
+model CharacterArcBeat {
+  id          String       @id @default(cuid())
+  arcId       String
+  arc         CharacterArc @relation(fields: [arcId], references: [id], onDelete: Cascade)
+  sceneId     String?
+  scene       Scene?       @relation(fields: [sceneId], references: [id], onDelete: SetNull)
+  description String
+  type        String?
+  index       Int
+  createdAt   DateTime     @default(now())
+
+  @@unique([arcId, index])
+  @@index([arcId])
+}
+
+model CharacterFact {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  label       String
+  value       String
+  isSecret    Boolean   @default(false)
+  knownByIds  String[]  @default([])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([characterId])
+}
+
+model CharacterRelationship {
+  id          String    @id @default(cuid())
+  fromId      String
+  toId        String
+  from        Character @relation("FromCharacter", fields: [fromId], references: [id], onDelete: Cascade)
+  to          Character @relation("ToCharacter", fields: [toId], references: [id], onDelete: Cascade)
+  label       String
+  description String?
+  dynamic     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([fromId, toId])
+  @@index([fromId])
+  @@index([toId])
+}
+
+// ============ CANON: LOCATIONS & RULES ============
+
+model Location {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  imageUrl    String?
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  scenes Scene[]
+
+  @@index([projectId])
+}
+
+model WorldRule {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  category    String?
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId])
+}
+
+// ============ STORY STRUCTURE ============
+
+model Act {
+  id        String   @id @default(cuid())
+  index     Int
+  title     String
+  synopsis  String?
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sequences Sequence[]
+
+  @@unique([projectId, index])
+}
+
+model Sequence {
+  id        String   @id @default(cuid())
+  index     Int
+  title     String
+  summary   String?
+  actId     String
+  act       Act      @relation(fields: [actId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  scenes Scene[]
+
+  @@unique([actId, index])
+}
+
+model Scene {
+  id         String    @id @default(cuid())
+  index      Int
+  title      String
+  summary    String?
+  purpose    String?
+  tone       String?
+  sequenceId String
+  sequence   Sequence  @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  locationId String?
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  shots        Shot[]
+  characters   SceneCharacter[]
+  agentOutputs AgentOutput[]
+  arcBeats     CharacterArcBeat[]
+
+  @@unique([sequenceId, index])
+}
+
+model SceneCharacter {
+  sceneId     String
+  characterId String
+  scene       Scene     @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  role        String?
+  notes       String?
+
+  @@id([sceneId, characterId])
+}
+
+model Shot {
+  id          String   @id @default(cuid())
+  index       Int
+  type        ShotType
+  description String
+  durationSec Int?
+  sceneId     String
+  scene       Scene    @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  agentOutputs AgentOutput[]
+
+  @@unique([sceneId, index])
+}
+
+enum ShotType {
+  WIDE
+  MEDIUM
+  CLOSE_UP
+  EXTREME_CLOSE_UP
+  POV
+  INSERT
+  OVER_THE_SHOULDER
+  TWO_SHOT
+}
+
+// ============ AI AGENTS ============
+
+model AgentOutput {
+  id        String             @id @default(cuid())
+  agentType AgentType
+  projectId String
+  project   Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sceneId   String?
+  scene     Scene?             @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  shotId    String?
+  shot      Shot?              @relation(fields: [shotId], references: [id], onDelete: Cascade)
+  severity  SuggestionSeverity
+  title     String
+  content   String
+  metadata  Json?
+  resolved  Boolean            @default(false)
+  createdAt DateTime           @default(now())
+
+  @@index([projectId])
+  @@index([sceneId])
+}
+
+enum AgentType {
+  CONTINUITY
+  STORY_STRUCTURE
+  CHARACTER
+  STORYBOARD
+}
+
+enum SuggestionSeverity {
+  INFO
+  WARNING
+  ERROR
+}
