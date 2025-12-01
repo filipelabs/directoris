@@ -9,4 +9,8 @@ export default () => ({
     cookiePassword: process.env.WORKOS_COOKIE_PASSWORD,
   },
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
+  agentos: {
+    url: process.env.AGENTOS_URL,
+    apiKey: process.env.AGENTOS_API_KEY,
+  },
 });

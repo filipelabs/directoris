@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProjectsService } from '../projects/projects.service';
 import {
@@ -6,6 +7,13 @@ import {
   ProjectRole,
   SuggestionSeverity,
 } from '../generated/prisma';
+import type {
+  AgentOSSceneAnalysisRequest,
+  AgentOSSceneAnalysisResponse,
+  AgentOSOutput,
+  AgentOSShotSuggestionsRequest,
+  AgentOSShotSuggestionsResponse,
+} from './dto';
 
 // Stub data for realistic responses
 interface StubSuggestion {
@@ -98,10 +106,21 @@ const STUB_SHOT_SUGGESTIONS = [
 
 @Injectable()
 export class AgentsService {
+  private readonly logger = new Logger(AgentsService.name);
+  private readonly agentOsUrl: string | undefined;
+
   constructor(
     private prisma: PrismaService,
     private projectsService: ProjectsService,
-  ) {}
+    private configService: ConfigService,
+  ) {
+    this.agentOsUrl = this.configService.get<string>('agentos.url');
+    if (this.agentOsUrl) {
+      this.logger.log(`AgentOS URL configured: ${this.agentOsUrl}`);
+    } else {
+      this.logger.log('AgentOS URL not configured, using stub responses');
+    }
+  }
 
   private async getProjectIdFromScene(sceneId: string): Promise<string> {
     const scene = await this.prisma.scene.findUnique({
@@ -136,10 +155,91 @@ export class AgentsService {
           AgentType.CHARACTER,
         ];
 
+    // If AgentOS is configured, call it; otherwise use stubs
+    if (this.agentOsUrl) {
+      return this.callAgentOS(projectId, sceneId, typesToRun);
+    }
+
+    return this.generateStubSuggestions(projectId, sceneId, typesToRun);
+  }
+
+  /**
+   * Call external AgentOS for scene analysis
+   */
+  private async callAgentOS(
+    projectId: string,
+    sceneId: string,
+    agentTypes: AgentType[],
+  ) {
+    const request: AgentOSSceneAnalysisRequest = {
+      projectId,
+      sceneId,
+      agentTypes,
+    };
+
+    try {
+      const response = await fetch(`${this.agentOsUrl}/agents/scene-analysis`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        this.logger.error(
+          `AgentOS returned ${response.status}: ${await response.text()}`,
+        );
+        // Fall back to stubs on error
+        return this.generateStubSuggestions(projectId, sceneId, agentTypes);
+      }
+
+      const data: AgentOSSceneAnalysisResponse = await response.json();
+      return this.saveAgentOutputs(projectId, sceneId, data.outputs);
+    } catch (error) {
+      this.logger.error(`Failed to call AgentOS: ${error}`);
+      // Fall back to stubs on error
+      return this.generateStubSuggestions(projectId, sceneId, agentTypes);
+    }
+  }
+
+  /**
+   * Save AgentOS outputs to database
+   */
+  private async saveAgentOutputs(
+    projectId: string,
+    sceneId: string,
+    outputs: AgentOSOutput[],
+  ) {
+    const savedOutputs = [];
+
+    for (const output of outputs) {
+      const saved = await this.prisma.agentOutput.create({
+        data: {
+          agentType: output.agentType,
+          projectId,
+          sceneId,
+          severity: output.severity,
+          title: output.title,
+          content: output.content,
+          metadata: output.metadata,
+        },
+      });
+      savedOutputs.push(saved);
+    }
+
+    return savedOutputs;
+  }
+
+  /**
+   * Generate stub suggestions (fallback when AgentOS not available)
+   */
+  private async generateStubSuggestions(
+    projectId: string,
+    sceneId: string,
+    agentTypes: AgentType[],
+  ) {
     const outputs = [];
 
-    // Generate stub suggestions for each agent type
-    for (const agentType of typesToRun) {
+    for (const agentType of agentTypes) {
       let suggestions: StubSuggestion[] = [];
 
       switch (agentType) {
@@ -193,6 +293,11 @@ export class AgentsService {
       ProjectRole.EDITOR,
     ]);
 
+    // If AgentOS is configured, call it; otherwise use stubs
+    if (this.agentOsUrl) {
+      return this.callAgentOSForShots(projectId, sceneId);
+    }
+
     // Return stub shot suggestions without saving them
     // User can review and accept individual shots
     return STUB_SHOT_SUGGESTIONS.map((shot, index) => ({
@@ -201,6 +306,57 @@ export class AgentsService {
       sceneId,
       suggested: true,
     }));
+  }
+
+  /**
+   * Call external AgentOS for shot suggestions
+   */
+  private async callAgentOSForShots(projectId: string, sceneId: string) {
+    const request: AgentOSShotSuggestionsRequest = {
+      projectId,
+      sceneId,
+    };
+
+    try {
+      const response = await fetch(
+        `${this.agentOsUrl}/agents/shot-suggestions`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(request),
+        },
+      );
+
+      if (!response.ok) {
+        this.logger.error(
+          `AgentOS shot-suggestions returned ${response.status}: ${await response.text()}`,
+        );
+        // Fall back to stubs
+        return STUB_SHOT_SUGGESTIONS.map((shot, index) => ({
+          ...shot,
+          index,
+          sceneId,
+          suggested: true,
+        }));
+      }
+
+      const data: AgentOSShotSuggestionsResponse = await response.json();
+      return data.suggestions.map((shot, index) => ({
+        ...shot,
+        index,
+        sceneId,
+        suggested: true,
+      }));
+    } catch (error) {
+      this.logger.error(`Failed to call AgentOS for shots: ${error}`);
+      // Fall back to stubs
+      return STUB_SHOT_SUGGESTIONS.map((shot, index) => ({
+        ...shot,
+        index,
+        sceneId,
+        suggested: true,
+      }));
+    }
   }
 
   async getSuggestionsByScene(sceneId: string, userId: string) {

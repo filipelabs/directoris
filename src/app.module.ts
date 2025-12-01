@@ -8,6 +8,7 @@ import { ProjectsModule } from './projects/projects.module';
 import { CanonModule } from './canon/canon.module';
 import { StoryModule } from './story/story.module';
 import { AgentsModule } from './agents/agents.module';
+import { InternalModule } from './internal/internal.module';
 import { AuthGuard } from './common/guards';
 
 @Module({
@@ -20,6 +21,7 @@ import { AuthGuard } from './common/guards';
     CanonModule,
     StoryModule,
     AgentsModule,
+    InternalModule,
   ],
   providers: [
     {
