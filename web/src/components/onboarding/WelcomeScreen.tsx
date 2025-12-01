@@ -7,12 +7,12 @@ import { NewProjectWizard } from "./NewProjectWizard";
 interface WelcomeScreenProps {
   userName?: string | null;
   onCreateProject: (data: {
-    projectType: "story" | "content" | null;
+    projectType: "story" | "content" | "ux" | null;
     projectName: string;
     logline: string;
     characters: { id: string; name: string; role: string }[];
     rules: { id: string; title: string; description: string }[];
-    structureTemplate: "quick" | "three_act" | "custom";
+    structureTemplate: "quick" | "three_act" | "custom" | "ux_journey";
     firstSceneTitle: string;
   }) => Promise<void>;
 }

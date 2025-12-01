@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ProjectTypeCard } from "./ProjectTypeCard";
 import { WizardStepIndicator } from "./WizardStepIndicator";
 
-type ProjectType = "story" | "content";
+type ProjectType = "story" | "content" | "ux";
 
 interface CharacterInput {
   id: string;
@@ -25,7 +25,7 @@ interface WizardData {
   logline: string;
   characters: CharacterInput[];
   rules: RuleInput[];
-  structureTemplate: "quick" | "three_act" | "custom";
+  structureTemplate: "quick" | "three_act" | "custom" | "ux_journey";
   firstSceneTitle: string;
 }
 
@@ -154,6 +154,8 @@ export function NewProjectWizard({ onComplete, onCancel }: NewProjectWizardProps
 
   const roleOptions = data.projectType === "content"
     ? ["Myself", "My Audience", "My Product", "Competitor", "Other"]
+    : data.projectType === "ux"
+    ? ["New User", "Power User", "Admin", "Billing User", "Guest", "Other"]
     : ["Protagonist", "Antagonist", "Supporting", "Mentor", "Love Interest", "Other"];
 
   return (
@@ -187,17 +189,17 @@ export function NewProjectWizard({ onComplete, onCancel }: NewProjectWizardProps
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <ProjectTypeCard
                   type="story"
                   title="Story Project"
-                  subtitle="Acts, scenes, characters, worlds"
+                  subtitle="Acts, scenes, characters"
                   icon={
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h1.5C5.496 19.5 6 18.996 6 18.375m-3.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-1.5A1.125 1.125 0 0118 18.375M20.625 4.5H3.375m17.25 0c.621 0 1.125.504 1.125 1.125M20.625 4.5h-1.5C18.504 4.5 18 5.004 18 5.625m3.75 0v1.5c0 .621-.504 1.125-1.125 1.125M3.375 4.5c-.621 0-1.125.504-1.125 1.125M3.375 4.5h1.5C5.496 4.5 6 5.004 6 5.625m-3.75 0v1.5c0 .621.504 1.125 1.125 1.125m0 0h1.5m-1.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m1.5-3.75C5.496 8.25 6 7.746 6 7.125v-1.5M4.875 8.25C5.496 8.25 6 8.754 6 9.375v1.5m0-5.25v5.25m0-5.25C6 5.004 6.504 4.5 7.125 4.5h9.75c.621 0 1.125.504 1.125 1.125m1.125 2.625h1.5m-1.5 0A1.125 1.125 0 0118 7.125v-1.5m1.125 2.625c-.621 0-1.125.504-1.125 1.125v1.5m2.625-2.625c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125M18 5.625v5.25M7.125 12h9.75m-9.75 0A1.125 1.125 0 016 10.875M7.125 12C6.504 12 6 12.504 6 13.125m0-2.25C6 11.496 5.496 12 4.875 12M18 10.875c0 .621-.504 1.125-1.125 1.125M18 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m-12 5.25v-5.25m0 5.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125m-12 0v-1.5c0-.621-.504-1.125-1.125-1.125M18 18.375v-5.25m0 5.25v-1.5c0-.621.504-1.125 1.125-1.125M18 13.125v1.5c0 .621.504 1.125 1.125 1.125M18 13.125c0-.621.504-1.125 1.125-1.125M6 13.125v1.5c0 .621-.504 1.125-1.125 1.125M6 13.125C6 12.504 5.496 12 4.875 12m-1.5 0h1.5m-1.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M19.125 12h1.5m0 0c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h1.5m14.25 0h1.5" />
                     </svg>
                   }
-                  examples={["TV Shows", "Films", "Games", "Novels"]}
+                  examples={["TV Shows", "Films", "Games"]}
                   selected={data.projectType === "story"}
                   onSelect={() => setData((d) => ({ ...d, projectType: "story" }))}
                 />
@@ -205,15 +207,29 @@ export function NewProjectWizard({ onComplete, onCancel }: NewProjectWizardProps
                 <ProjectTypeCard
                   type="content"
                   title="Content Project"
-                  subtitle="Series, posts, narrative arcs"
+                  subtitle="Series, posts, arcs"
                   icon={
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
                     </svg>
                   }
-                  examples={["LinkedIn", "YouTube", "Newsletter", "Blog"]}
+                  examples={["LinkedIn", "YouTube", "Blog"]}
                   selected={data.projectType === "content"}
                   onSelect={() => setData((d) => ({ ...d, projectType: "content" }))}
+                />
+
+                <ProjectTypeCard
+                  type="ux"
+                  title="UX Project"
+                  subtitle="Journeys, flows, personas"
+                  icon={
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
+                    </svg>
+                  }
+                  examples={["Apps", "SaaS", "Websites"]}
+                  selected={data.projectType === "ux"}
+                  onSelect={() => setData((d) => ({ ...d, projectType: "ux" }))}
                 />
               </div>
             </motion.div>
@@ -233,7 +249,7 @@ export function NewProjectWizard({ onComplete, onCancel }: NewProjectWizardProps
             >
               <div className="text-center mb-8">
                 <h2 className="text-display text-text-primary mb-2">
-                  Name your {data.projectType === "content" ? "content project" : "story"}
+                  Name your {data.projectType === "content" ? "content project" : data.projectType === "ux" ? "UX project" : "story"}
                 </h2>
                 <p className="text-body text-text-muted">
                   Give it a working title - you can always change it later
@@ -252,6 +268,8 @@ export function NewProjectWizard({ onComplete, onCancel }: NewProjectWizardProps
                     placeholder={
                       data.projectType === "content"
                         ? "Build in public - directoris"
+                        : data.projectType === "ux"
+                        ? "SaaS Dashboard v2"
                         : "The Tethered City"
                     }
                     className="input text-lg py-3"
@@ -261,7 +279,7 @@ export function NewProjectWizard({ onComplete, onCancel }: NewProjectWizardProps
 
                 <div>
                   <label className="block text-caption text-text-muted mb-2 uppercase tracking-wider">
-                    {data.projectType === "content" ? "Tagline" : "Logline"}
+                    {data.projectType === "content" ? "Tagline" : data.projectType === "ux" ? "Product Description" : "Logline"}
                     <span className="text-text-subtle ml-1">(optional)</span>
                   </label>
                   <textarea
@@ -270,6 +288,8 @@ export function NewProjectWizard({ onComplete, onCancel }: NewProjectWizardProps
                     placeholder={
                       data.projectType === "content"
                         ? "A founder building an AI story OS in public."
+                        : data.projectType === "ux"
+                        ? "Analytics dashboard for small business owners."
                         : "A city held above a void by forgotten magic."
                     }
                     className="input min-h-[80px] resize-none"
@@ -294,18 +314,20 @@ export function NewProjectWizard({ onComplete, onCancel }: NewProjectWizardProps
             >
               <div className="text-center mb-8">
                 <h2 className="text-display text-text-primary mb-2">
-                  Define your canon
+                  {data.projectType === "ux" ? "Define your context" : "Define your canon"}
                 </h2>
                 <p className="text-body text-text-muted">
-                  Add characters and rules - agents use these for continuity checks
+                  {data.projectType === "ux"
+                    ? "Add personas and UX principles - agents use these for consistency checks"
+                    : "Add characters and rules - agents use these for continuity checks"}
                 </p>
               </div>
 
-              {/* Characters */}
+              {/* Characters / Personas */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <label className="text-caption text-text-muted uppercase tracking-wider">
-                    {data.projectType === "content" ? "Key Figures" : "Characters"}
+                    {data.projectType === "content" ? "Key Figures" : data.projectType === "ux" ? "Personas" : "Characters"}
                   </label>
                   <button
                     onClick={addCharacter}
@@ -323,19 +345,20 @@ export function NewProjectWizard({ onComplete, onCancel }: NewProjectWizardProps
                       key={char.id}
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex gap-3 items-start"
+                      className="grid gap-3 items-start"
+                      style={{ gridTemplateColumns: "1fr 140px 40px" }}
                     >
                       <input
                         type="text"
                         value={char.name}
                         onChange={(e) => updateCharacter(char.id, "name", e.target.value)}
-                        placeholder={`Character ${index + 1} name`}
-                        className="input flex-1"
+                        placeholder={data.projectType === "ux" ? `Persona ${index + 1} name` : `Character ${index + 1} name`}
+                        className="input w-full"
                       />
                       <select
                         value={char.role}
                         onChange={(e) => updateCharacter(char.id, "role", e.target.value)}
-                        className="input w-40"
+                        className="input w-full"
                       >
                         {roleOptions.map((role) => (
                           <option key={role} value={role}>
@@ -346,7 +369,7 @@ export function NewProjectWizard({ onComplete, onCancel }: NewProjectWizardProps
                       <button
                         onClick={() => removeCharacter(char.id)}
                         disabled={data.characters.length === 1}
-                        className="p-2 text-text-subtle hover:text-status-error disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        className="p-2 text-text-subtle hover:text-status-error disabled:opacity-30 disabled:cursor-not-allowed transition-colors justify-self-center"
                       >
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -361,7 +384,7 @@ export function NewProjectWizard({ onComplete, onCancel }: NewProjectWizardProps
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <label className="text-caption text-text-muted uppercase tracking-wider">
-                    {data.projectType === "content" ? "Content Rules" : "World Rules"}
+                    {data.projectType === "content" ? "Content Rules" : data.projectType === "ux" ? "UX Principles" : "World Rules"}
                   </label>
                   <button
                     onClick={addRule}
@@ -388,6 +411,8 @@ export function NewProjectWizard({ onComplete, onCancel }: NewProjectWizardProps
                         placeholder={
                           data.projectType === "content"
                             ? `Rule ${index + 1}: e.g., "Always include a call to action"`
+                            : data.projectType === "ux"
+                            ? `Principle ${index + 1}: e.g., "Never block flows behind signup"`
                             : `Rule ${index + 1}: e.g., "Magic costs memory"`
                         }
                         className="input flex-1"
@@ -434,7 +459,38 @@ export function NewProjectWizard({ onComplete, onCancel }: NewProjectWizardProps
               </div>
 
               <div className="grid gap-4">
-                {[
+                {(data.projectType === "ux" ? [
+                  {
+                    value: "quick" as const,
+                    title: "Quick Start",
+                    description: "1 phase, 1 flow, 1 screen - minimal setup to get mapping",
+                    icon: (
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    value: "ux_journey" as const,
+                    title: "User Journey",
+                    description: "Onboarding, Core Usage, Retention & Recovery phases",
+                    icon: (
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    value: "custom" as const,
+                    title: "Empty Canvas",
+                    description: "Start from scratch - add flows as you go",
+                    icon: (
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                      </svg>
+                    ),
+                  },
+                ] : [
                   {
                     value: "quick" as const,
                     title: "Quick Start",
@@ -465,7 +521,7 @@ export function NewProjectWizard({ onComplete, onCancel }: NewProjectWizardProps
                       </svg>
                     ),
                   },
-                ].map((option) => (
+                ]).map((option) => (
                   <button
                     key={option.value}
                     onClick={() => setData((d) => ({ ...d, structureTemplate: option.value }))}
@@ -521,14 +577,14 @@ export function NewProjectWizard({ onComplete, onCancel }: NewProjectWizardProps
                   className="pt-4"
                 >
                   <label className="block text-caption text-text-muted mb-2 uppercase tracking-wider">
-                    First {data.projectType === "content" ? "Post" : "Scene"} Title
+                    First {data.projectType === "content" ? "Post" : data.projectType === "ux" ? "Screen" : "Scene"} Title
                     <span className="text-text-subtle ml-1">(optional)</span>
                   </label>
                   <input
                     type="text"
                     value={data.firstSceneTitle}
                     onChange={(e) => setData((d) => ({ ...d, firstSceneTitle: e.target.value }))}
-                    placeholder={data.projectType === "content" ? "Introduction post" : "Opening scene"}
+                    placeholder={data.projectType === "content" ? "Introduction post" : data.projectType === "ux" ? "Landing page" : "Opening scene"}
                     className="input"
                   />
                 </motion.div>

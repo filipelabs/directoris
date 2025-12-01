@@ -22,12 +22,12 @@ import type {
 const LAST_PROJECT_KEY = "directoris:lastProjectId";
 
 interface WizardData {
-  projectType: "story" | "content" | null;
+  projectType: "story" | "content" | "ux" | null;
   projectName: string;
   logline: string;
   characters: { id: string; name: string; role: string }[];
   rules: { id: string; title: string; description: string }[];
-  structureTemplate: "quick" | "three_act" | "custom";
+  structureTemplate: "quick" | "three_act" | "custom" | "ux_journey";
   firstSceneTitle: string;
 }
 
@@ -273,6 +273,38 @@ export default function StoryPage() {
                 await api.scenes.create(seq.id, {
                   index: 1,
                   title: data.firstSceneTitle || "Opening Scene",
+                });
+              }
+            }
+          }
+
+          createdActs = await api.acts.list(newProject.id);
+        } else if (data.structureTemplate === "ux_journey") {
+          // UX Journey structure: Onboarding, Core Usage, Retention & Recovery
+          const phaseTitles = ["Onboarding", "Core Usage", "Retention & Recovery"];
+          const flowTemplates = [
+            ["Sign Up & Activation", "First Meaningful Action"],
+            ["Main Workflow", "Settings & Preferences"],
+            ["Upgrade & Billing", "Churn Prevention"],
+          ];
+
+          for (let i = 0; i < 3; i++) {
+            const act = await api.acts.create(newProject.id, {
+              index: i + 1,
+              title: phaseTitles[i],
+            });
+
+            for (let j = 0; j < flowTemplates[i].length; j++) {
+              const seq = await api.sequences.create(act.id, {
+                index: j + 1,
+                title: flowTemplates[i][j],
+              });
+
+              // Create first screen only in first flow
+              if (i === 0 && j === 0) {
+                await api.scenes.create(seq.id, {
+                  index: 1,
+                  title: data.firstSceneTitle || "Landing Page",
                 });
               }
             }

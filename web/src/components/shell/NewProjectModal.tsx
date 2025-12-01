@@ -6,12 +6,12 @@ import { createPortal } from "react-dom";
 import { NewProjectWizard } from "@/components/onboarding";
 
 interface WizardData {
-  projectType: "story" | "content" | null;
+  projectType: "story" | "content" | "ux" | null;
   projectName: string;
   logline: string;
   characters: { id: string; name: string; role: string }[];
   rules: { id: string; title: string; description: string }[];
-  structureTemplate: "quick" | "three_act" | "custom";
+  structureTemplate: "quick" | "three_act" | "custom" | "ux_journey";
   firstSceneTitle: string;
 }
 

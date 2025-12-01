@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 
 interface ProjectTypeCardProps {
-  type: "story" | "content";
+  type: "story" | "content" | "ux";
   title: string;
   subtitle: string;
   icon: React.ReactNode;
@@ -125,6 +125,23 @@ export function ProjectTypeCard({
             <path d="M0 40 Q20 20, 40 40 T80 40" />
             <path d="M0 50 Q20 30, 40 50 T80 50" />
             <path d="M0 60 Q20 40, 40 60 T80 60" />
+          </svg>
+        </div>
+      )}
+
+      {/* Decorative flowchart element for UX type */}
+      {type === "ux" && (
+        <div className="absolute -bottom-2 -right-2 opacity-10 group-hover:opacity-20 transition-opacity">
+          <svg width="80" height="80" viewBox="0 0 80 80" fill="currentColor">
+            <rect x="10" y="5" width="20" height="14" rx="2" />
+            <rect x="50" y="5" width="20" height="14" rx="2" />
+            <rect x="30" y="33" width="20" height="14" rx="2" />
+            <rect x="10" y="61" width="20" height="14" rx="2" />
+            <rect x="50" y="61" width="20" height="14" rx="2" />
+            <path d="M20 19 L20 28 L40 28 L40 33" stroke="currentColor" fill="none" strokeWidth="2" />
+            <path d="M60 19 L60 28 L40 28 L40 33" stroke="currentColor" fill="none" strokeWidth="2" />
+            <path d="M40 47 L40 56 L20 56 L20 61" stroke="currentColor" fill="none" strokeWidth="2" />
+            <path d="M40 47 L40 56 L60 56 L60 61" stroke="currentColor" fill="none" strokeWidth="2" />
           </svg>
         </div>
       )}
