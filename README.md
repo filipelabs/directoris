@@ -2,7 +2,22 @@
 
 > The director OS for AI-powered storytelling
 
-A NestJS backend for managing story projects with AI-powered agents. Organize narratives from TV shows to LinkedIn content strategies using a unified story structure.
+A full-stack application for managing story projects with AI-powered agents. Organize narratives from TV shows to LinkedIn content strategies using a unified story structure.
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Frontend (Next.js :3001)                     │
+│         Cinematic control room UI - dark, story-first           │
+├─────────────────────────────────────────────────────────────────┤
+│                    Backend (NestJS :3000)                       │
+│              REST API + WorkOS Auth + Prisma ORM                │
+├─────────────────────────────────────────────────────────────────┤
+│                   AgentOS (FastAPI :8000)                       │
+│            AI agents via OpenRouter (Gemini 3 Pro)              │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ## Features
 
@@ -10,43 +25,71 @@ A NestJS backend for managing story projects with AI-powered agents. Organize na
 - **Story Structure** - Acts → Sequences → Scenes → Shots
 - **Canon / Story Bible** - Characters, Locations, World Rules
 - **Characters OS** - Arcs, Arc Beats, Facts, Relationships
-- **AI Agents** - Continuity, story structure, and character analysis (stubbed, ready for LLM integration)
+- **AI Agents** - Continuity analysis (world rule violations, timeline issues, character knowledge gaps)
 - **Auth** - WorkOS integration with session cookies
+- **Cinematic UI** - Dark control room aesthetic with three-pane layout
 
 ## Tech Stack
 
-- **Backend**: NestJS + TypeScript
-- **Database**: PostgreSQL + Prisma ORM
-- **Auth**: WorkOS AuthKit
-- **Docs**: Swagger/OpenAPI
+| Layer | Stack |
+|-------|-------|
+| **Frontend** | Next.js 16, React 19, Tailwind v4, Framer Motion |
+| **Backend** | NestJS, TypeScript, Prisma ORM |
+| **Database** | PostgreSQL |
+| **Auth** | WorkOS AuthKit |
+| **AI Agents** | Python/FastAPI, OpenRouter (Gemini 3 Pro) |
+| **Docs** | Swagger/OpenAPI |
 
 ## Quick Start
 
 ```bash
-# Install dependencies
+# 1. Install dependencies
 npm install
+cd web && npm install
+cd ../agno && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt
 
-# Start PostgreSQL (Docker)
+# 2. Start PostgreSQL
 docker-compose up -d
 
-# Run migrations
+# 3. Run migrations
 npx prisma migrate dev
 
-# Start dev server
-npm run start:dev
+# 4. Start all services
+npm run start:dev          # Backend :3000
+cd web && npm run dev      # Frontend :3001
+cd agno && uvicorn src.main:app --port 8000  # AgentOS :8000
 ```
 
-Server: http://localhost:3000
-Swagger docs: http://localhost:3000/api/docs
+**URLs:**
+- Frontend: http://localhost:3001
+- Backend API: http://localhost:3000
+- Swagger docs: http://localhost:3000/api/docs
+- AgentOS: http://localhost:8000
 
 ## Environment Variables
 
+### Backend (.env)
 ```env
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/directoris
 WORKOS_API_KEY=sk_...
 WORKOS_CLIENT_ID=client_...
 WORKOS_COOKIE_PASSWORD=at-least-32-characters-long-secret
 FRONTEND_URL=http://localhost:3000
+AGENTOS_URL=http://localhost:8000
+AGENTOS_KEY=your-internal-api-key
+```
+
+### AgentOS (agno/.env)
+```env
+OPENROUTER_API_KEY=sk-or-...
+OPENROUTER_MODEL=google/gemini-2.0-flash-001
+DIRECTORIS_URL=http://localhost:3000
+DIRECTORIS_INTERNAL_KEY=your-internal-api-key
+```
+
+### Frontend (web/.env.local)
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3000
 ```
 
 ## API Overview
@@ -63,7 +106,12 @@ FRONTEND_URL=http://localhost:3000
 - `GET /projects/:id` - Get project
 - `PATCH /projects/:id` - Update project
 - `DELETE /projects/:id` - Delete project
-- Membership management endpoints
+
+### Story Structure
+- Acts: `/projects/:projectId/acts`, `/acts/:id`
+- Sequences: `/acts/:actId/sequences`, `/sequences/:id`
+- Scenes: `/sequences/:sequenceId/scenes`, `/scenes/:id`
+- Shots: `/scenes/:sceneId/shots`, `/shots/:id`
 
 ### Canon
 - Characters: `/projects/:projectId/characters`, `/characters/:id`
@@ -74,19 +122,23 @@ FRONTEND_URL=http://localhost:3000
 - Arcs: `/characters/:characterId/arcs`, `/arcs/:arcId`
 - Arc Beats: `/arcs/:arcId/beats`, `/beats/:beatId`
 - Facts: `/characters/:characterId/facts`, `/facts/:factId`
-- Relationships: `/characters/:characterId/relationships`, `/relationships/:id`
-
-### Story Structure
-- Acts: `/projects/:projectId/acts`, `/acts/:id`
-- Sequences: `/acts/:actId/sequences`, `/sequences/:id`
-- Scenes: `/sequences/:sequenceId/scenes`, `/scenes/:id`
-- Shots: `/scenes/:sceneId/shots`, `/shots/:id`
+- Relationships: `/characters/:characterId/relationships`
 
 ### AI Agents
 - `POST /scenes/:sceneId/run-agents` - Run analysis agents
-- `POST /scenes/:sceneId/shot-suggestions` - Get shot suggestions
 - `GET /scenes/:sceneId/suggestions` - List suggestions
 - `PATCH /agent-outputs/:id/resolve` - Mark resolved
+
+## UI Design
+
+The frontend uses a cinematic "director's control room" aesthetic:
+
+- **Colors**: Near-black base (#050712), electric violet accent (#7C5CFF)
+- **Typography**: Syne (headings), DM Sans (body), JetBrains Mono (scene numbers)
+- **Layout**: Three-pane master/detail
+  - Pane A: Collapsible scene tree (ACT → SEQ → SCN)
+  - Pane B: Scene detail with Overview/Content/Beats tabs
+  - Pane C: Agent panel with severity-colored suggestion cards
 
 ## Use Cases
 
