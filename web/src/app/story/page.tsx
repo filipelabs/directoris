@@ -410,6 +410,43 @@ export default function StoryPage() {
     [acts, selectedScene]
   );
 
+  // Update act title
+  const handleUpdateAct = useCallback(
+    async (actId: string, title: string) => {
+      try {
+        await api.acts.update(actId, { title });
+        setActs((prev) =>
+          prev.map((a) => (a.id === actId ? { ...a, title } : a))
+        );
+      } catch (err) {
+        console.error("Failed to update act:", err);
+        throw err;
+      }
+    },
+    []
+  );
+
+  // Update sequence title
+  const handleUpdateSequence = useCallback(
+    async (sequenceId: string, title: string) => {
+      try {
+        await api.sequences.update(sequenceId, { title });
+        setActs((prev) =>
+          prev.map((a) => ({
+            ...a,
+            sequences: a.sequences?.map((seq) =>
+              seq.id === sequenceId ? { ...seq, title } : seq
+            ),
+          }))
+        );
+      } catch (err) {
+        console.error("Failed to update sequence:", err);
+        throw err;
+      }
+    },
+    []
+  );
+
   // Switch to a different project
   const handleSwitchProject = useCallback(
     async (proj: Project) => {
@@ -717,8 +754,10 @@ export default function StoryPage() {
                 onDeleteScene={handleDeleteScene}
                 onCreateAct={handleCreateAct}
                 onDeleteAct={handleDeleteAct}
+                onUpdateAct={handleUpdateAct}
                 onCreateSequence={handleCreateSequence}
                 onDeleteSequence={handleDeleteSequence}
+                onUpdateSequence={handleUpdateSequence}
               />
 
               {/* Onboarding checklist */}

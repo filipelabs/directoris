@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
 import { InlineAddForm, AddButton } from "./InlineAddForm";
@@ -15,8 +15,10 @@ interface SceneTreeProps {
   onDeleteScene?: (sceneId: string) => Promise<void>;
   onCreateAct?: (title: string) => Promise<void>;
   onDeleteAct?: (actId: string) => Promise<void>;
+  onUpdateAct?: (actId: string, title: string) => Promise<void>;
   onCreateSequence?: (actId: string, title: string) => Promise<void>;
   onDeleteSequence?: (sequenceId: string) => Promise<void>;
+  onUpdateSequence?: (sequenceId: string, title: string) => Promise<void>;
 }
 
 export function SceneTree({
@@ -28,8 +30,10 @@ export function SceneTree({
   onDeleteScene,
   onCreateAct,
   onDeleteAct,
+  onUpdateAct,
   onCreateSequence,
   onDeleteSequence,
+  onUpdateSequence,
 }: SceneTreeProps) {
   const safeActs = acts || [];
   const [isAddingAct, setIsAddingAct] = useState(false);
@@ -97,8 +101,10 @@ export function SceneTree({
             onCreateScene={onCreateScene}
             onDeleteScene={onDeleteScene}
             onDeleteAct={onDeleteAct}
+            onUpdateAct={onUpdateAct}
             onCreateSequence={onCreateSequence}
             onDeleteSequence={onDeleteSequence}
+            onUpdateSequence={onUpdateSequence}
           />
         ))}
 
@@ -149,8 +155,10 @@ interface ActNodeProps {
   onCreateScene?: (sequenceId: string, title: string) => Promise<void>;
   onDeleteScene?: (sceneId: string) => Promise<void>;
   onDeleteAct?: (actId: string) => Promise<void>;
+  onUpdateAct?: (actId: string, title: string) => Promise<void>;
   onCreateSequence?: (actId: string, title: string) => Promise<void>;
   onDeleteSequence?: (sequenceId: string) => Promise<void>;
+  onUpdateSequence?: (sequenceId: string, title: string) => Promise<void>;
 }
 
 function ActNode({
@@ -165,11 +173,23 @@ function ActNode({
   onCreateScene,
   onDeleteScene,
   onDeleteAct,
+  onUpdateAct,
   onCreateSequence,
   onDeleteSequence,
+  onUpdateSequence,
 }: ActNodeProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isAddingSequence, setIsAddingSequence] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(act.title);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
 
   const handleDeleteAct = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -182,6 +202,31 @@ function ActNode({
     if (onCreateSequence) {
       await onCreateSequence(act.id, title);
       setIsAddingSequence(false);
+    }
+  };
+
+  const handleTitleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onUpdateAct) {
+      setEditValue(act.title);
+      setIsEditing(true);
+    }
+  };
+
+  const handleSaveTitle = async () => {
+    const trimmed = editValue.trim();
+    if (trimmed && trimmed !== act.title && onUpdateAct) {
+      await onUpdateAct(act.id, trimmed);
+    }
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSaveTitle();
+    } else if (e.key === "Escape") {
+      setEditValue(act.title);
+      setIsEditing(false);
     }
   };
 
@@ -201,13 +246,32 @@ function ActNode({
           <span className="text-mono text-text-subtle text-xs">
             ACT {toRoman(act.index)}
           </span>
-          <span className="text-caption font-medium text-text-primary truncate">
-            {act.title}
-          </span>
+          {isEditing ? (
+            <input
+              ref={inputRef}
+              type="text"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={handleSaveTitle}
+              onKeyDown={handleKeyDown}
+              onClick={(e) => e.stopPropagation()}
+              className="text-caption font-medium text-text-primary bg-bg-elevated border border-border-default rounded px-1.5 py-0.5 outline-none focus:border-accent-primary flex-1 min-w-0"
+            />
+          ) : (
+            <span
+              onClick={handleTitleClick}
+              className={clsx(
+                "text-caption font-medium text-text-primary truncate",
+                onUpdateAct && "cursor-text hover:bg-bg-elevated/50 rounded px-1 -mx-1"
+              )}
+            >
+              {act.title}
+            </span>
+          )}
         </button>
 
         {/* Delete button */}
-        {onDeleteAct && isHovered && (
+        {onDeleteAct && isHovered && !isEditing && (
           <button
             onClick={handleDeleteAct}
             className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-subtle hover:text-status-error transition-colors rounded"
@@ -252,6 +316,7 @@ function ActNode({
                 onCreateScene={onCreateScene}
                 onDeleteScene={onDeleteScene}
                 onDeleteSequence={onDeleteSequence}
+                onUpdateSequence={onUpdateSequence}
               />
             ))}
 
@@ -293,6 +358,7 @@ interface SequenceNodeProps {
   onCreateScene?: (sequenceId: string, title: string) => Promise<void>;
   onDeleteScene?: (sceneId: string) => Promise<void>;
   onDeleteSequence?: (sequenceId: string) => Promise<void>;
+  onUpdateSequence?: (sequenceId: string, title: string) => Promise<void>;
 }
 
 function SequenceNode({
@@ -305,9 +371,20 @@ function SequenceNode({
   onCreateScene,
   onDeleteScene,
   onDeleteSequence,
+  onUpdateSequence,
 }: SequenceNodeProps) {
   const [isAddingScene, setIsAddingScene] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(sequence.title);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
 
   const handleCreateScene = async (title: string) => {
     if (onCreateScene) {
@@ -320,6 +397,31 @@ function SequenceNode({
     e.stopPropagation();
     if (onDeleteSequence && confirm(`Delete sequence "${sequence.title}" and all its scenes?`)) {
       await onDeleteSequence(sequence.id);
+    }
+  };
+
+  const handleTitleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onUpdateSequence) {
+      setEditValue(sequence.title);
+      setIsEditing(true);
+    }
+  };
+
+  const handleSaveTitle = async () => {
+    const trimmed = editValue.trim();
+    if (trimmed && trimmed !== sequence.title && onUpdateSequence) {
+      await onUpdateSequence(sequence.id, trimmed);
+    }
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSaveTitle();
+    } else if (e.key === "Escape") {
+      setEditValue(sequence.title);
+      setIsEditing(false);
     }
   };
 
@@ -339,13 +441,32 @@ function SequenceNode({
           <span className="text-mono text-text-subtle text-xs">
             SEQ {String(sequence.index).padStart(2, "0")}
           </span>
-          <span className="text-caption text-text-muted truncate group-hover:text-text-primary">
-            {sequence.title}
-          </span>
+          {isEditing ? (
+            <input
+              ref={inputRef}
+              type="text"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={handleSaveTitle}
+              onKeyDown={handleKeyDown}
+              onClick={(e) => e.stopPropagation()}
+              className="text-caption text-text-primary bg-bg-elevated border border-border-default rounded px-1.5 py-0.5 outline-none focus:border-accent-primary flex-1 min-w-0"
+            />
+          ) : (
+            <span
+              onClick={handleTitleClick}
+              className={clsx(
+                "text-caption text-text-muted truncate group-hover:text-text-primary",
+                onUpdateSequence && "cursor-text hover:bg-bg-elevated/50 rounded px-1 -mx-1"
+              )}
+            >
+              {sequence.title}
+            </span>
+          )}
         </button>
 
         {/* Delete button */}
-        {onDeleteSequence && isHovered && (
+        {onDeleteSequence && isHovered && !isEditing && (
           <button
             onClick={handleDeleteSequence}
             className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-subtle hover:text-status-error transition-colors rounded"
