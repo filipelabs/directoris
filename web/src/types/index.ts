@@ -181,6 +181,11 @@ export interface CharacterRelationship {
   to?: Character;
 }
 
+export interface CharacterRelationshipsResponse {
+  outgoing: CharacterRelationship[];
+  incoming: CharacterRelationship[];
+}
+
 export interface Location {
   id: string;
   name: string;

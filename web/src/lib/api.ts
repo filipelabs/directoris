@@ -12,6 +12,7 @@ import type {
   Character,
   CharacterFact,
   CharacterRelationship,
+  CharacterRelationshipsResponse,
   CharacterArc,
   CharacterArcBeat,
   WorldRule,
@@ -248,7 +249,7 @@ export const facts = {
 
 export const relationships = {
   list: (characterId: string) =>
-    apiFetch<CharacterRelationship[]>(`/characters/${characterId}/relationships`),
+    apiFetch<CharacterRelationshipsResponse>(`/characters/${characterId}/relationships`),
 
   create: (characterId: string, data: CreateCharacterRelationshipDto) =>
     apiFetch<CharacterRelationship>(`/characters/${characterId}/relationships`, {

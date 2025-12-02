@@ -63,7 +63,9 @@ export function CharacterDetail({
         api.arcs.list(characterId),
       ]);
       setFacts(Array.isArray(factsData) ? factsData : []);
-      setRelationships(Array.isArray(relationshipsData) ? relationshipsData : []);
+      // Backend returns { outgoing, incoming } - we display outgoing relationships
+      const outgoing = relationshipsData?.outgoing;
+      setRelationships(Array.isArray(outgoing) ? outgoing : []);
       setArcs(Array.isArray(arcsData) ? arcsData : []);
     } catch (err) {
       console.error("Failed to load character details:", err);
