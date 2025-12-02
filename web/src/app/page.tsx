@@ -1,25 +1,32 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
 
 export default function Home() {
   const router = useRouter();
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    // Check if user might have a session cookie
-    // Note: We can't validate the cookie client-side, but we can check if it exists
-    const hasCookie = document.cookie.includes("wos-session");
-
-    if (hasCookie) {
-      // Likely authenticated, go to story page (which will validate server-side)
-      router.replace("/story");
-    } else {
-      // No session, go to login
-      router.replace("/login");
+    async function checkSession() {
+      try {
+        // Call the API to check if we have a valid session
+        // The httpOnly cookie will be sent automatically with credentials: "include"
+        await api.auth.getSession();
+        // Session is valid, go to story page
+        router.replace("/story");
+      } catch {
+        // No valid session, go to login
+        router.replace("/login");
+      } finally {
+        setChecking(false);
+      }
     }
+    checkSession();
   }, [router]);
 
-  // Show nothing while redirecting
+  // Show nothing while checking/redirecting
+  if (checking) return null;
   return null;
 }
