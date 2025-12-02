@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import clsx from "clsx";
-import type { Scene, Character, Location } from "@/types";
+import { useAutoSave } from "@/hooks";
+import type { Scene, Character, Location, UpdateSceneDto } from "@/types";
 
-type Tab = "overview" | "content" | "beats";
+type Tab = "overview" | "beats";
 
 interface SceneDetailProps {
   scene: Scene | null;
@@ -13,7 +14,7 @@ interface SceneDetailProps {
   actTitle?: string;
   characters?: Character[];
   location?: Location | null;
-  onUpdateScene?: (data: Partial<Scene>) => void;
+  onUpdateScene?: (sceneId: string, data: UpdateSceneDto) => Promise<void>;
 }
 
 export function SceneDetail({
@@ -25,6 +26,42 @@ export function SceneDetail({
   onUpdateScene,
 }: SceneDetailProps) {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [editedTitle, setEditedTitle] = useState("");
+  const [editedSummary, setEditedSummary] = useState("");
+  const [editedPurpose, setEditedPurpose] = useState("");
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+
+  // Sync local state with scene prop
+  useEffect(() => {
+    if (scene) {
+      setEditedTitle(scene.title);
+      setEditedSummary(scene.summary || "");
+      setEditedPurpose(scene.purpose || "");
+    }
+  }, [scene?.id]);
+
+  // Memoized data for auto-save
+  const sceneData = useMemo(
+    () => ({
+      title: editedTitle,
+      summary: editedSummary,
+      purpose: editedPurpose,
+    }),
+    [editedTitle, editedSummary, editedPurpose]
+  );
+
+  // Auto-save hook - key resets state when scene changes
+  const { status, lastSaved, isPending } = useAutoSave({
+    data: sceneData,
+    onSave: async (data) => {
+      if (scene && onUpdateScene) {
+        await onUpdateScene(scene.id, data);
+      }
+    },
+    debounceMs: 800,
+    enabled: !!scene && !!onUpdateScene,
+    key: scene?.id ?? null,
+  });
 
   if (!scene) {
     return (
@@ -54,21 +91,57 @@ export function SceneDetail({
     );
   }
 
-  // Get characters in this scene (ensure array is always defined)
+  // Get characters in this scene
   const sceneCharacters = (scene.characters || [])
     .map((sc) => characters.find((c) => c.id === sc.characterId))
     .filter(Boolean) as Character[];
+
+  const handleTitleBlur = () => {
+    setIsEditingTitle(false);
+  };
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      setIsEditingTitle(false);
+    } else if (e.key === "Escape") {
+      setEditedTitle(scene.title);
+      setIsEditingTitle(false);
+    }
+  };
 
   return (
     <div className="pane pane-b flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-bg-surface border-b border-border-subtle px-6 py-4">
-        {/* Title */}
-        <h1 className="text-title text-text-primary mb-3">{scene.title}</h1>
+        {/* Title row with save status */}
+        <div className="flex items-center gap-3 mb-3">
+          {isEditingTitle ? (
+            <input
+              type="text"
+              value={editedTitle}
+              onChange={(e) => setEditedTitle(e.target.value)}
+              onBlur={handleTitleBlur}
+              onKeyDown={handleTitleKeyDown}
+              autoFocus
+              className="flex-1 text-title text-text-primary bg-transparent border-b-2 border-accent-primary focus:outline-none"
+            />
+          ) : (
+            <h1
+              onClick={() => setIsEditingTitle(true)}
+              className="text-title text-text-primary cursor-text hover:text-accent-primary transition-colors"
+              title="Click to edit"
+            >
+              {editedTitle || scene.title}
+            </h1>
+          )}
+
+          {/* Save status indicator */}
+          <SaveStatusIndicator status={status} lastSaved={lastSaved} isPending={isPending} />
+        </div>
 
         {/* Chips row */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Sequence chip */}
           {sequenceTitle && (
             <span className="chip">
               <span className="text-mono text-text-subtle text-micro">SEQ</span>
@@ -76,7 +149,6 @@ export function SceneDetail({
             </span>
           )}
 
-          {/* Act chip */}
           {actTitle && (
             <span className="chip">
               <span className="text-mono text-text-subtle text-micro">ACT</span>
@@ -84,14 +156,8 @@ export function SceneDetail({
             </span>
           )}
 
-          {/* Tone chips */}
-          {scene.tone && (
-            <span className="chip chip-accent">
-              {scene.tone}
-            </span>
-          )}
+          {scene.tone && <span className="chip chip-accent">{scene.tone}</span>}
 
-          {/* Location */}
           {location && (
             <span className="chip">
               <svg
@@ -116,10 +182,8 @@ export function SceneDetail({
             </span>
           )}
 
-          {/* Spacer */}
           <div className="flex-1" />
 
-          {/* Character avatars */}
           {sceneCharacters.length > 0 && (
             <div className="flex -space-x-2">
               {sceneCharacters.slice(0, 4).map((char) => (
@@ -136,7 +200,7 @@ export function SceneDetail({
 
         {/* Tabs */}
         <div className="flex items-center gap-1 mt-4 -mb-4 border-b border-transparent">
-          {(["overview", "content", "beats"] as Tab[]).map((tab) => (
+          {(["overview", "beats"] as Tab[]).map((tab) => (
             <TabButton
               key={tab}
               label={tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -156,16 +220,77 @@ export function SceneDetail({
           transition={{ duration: 0.15 }}
         >
           {activeTab === "overview" && (
-            <OverviewTab scene={scene} location={location} />
-          )}
-          {activeTab === "content" && (
-            <ContentTab scene={scene} onUpdate={onUpdateScene} />
+            <OverviewTab
+              scene={scene}
+              location={location}
+              editedPurpose={editedPurpose}
+              editedSummary={editedSummary}
+              onPurposeChange={setEditedPurpose}
+              onSummaryChange={setEditedSummary}
+            />
           )}
           {activeTab === "beats" && <BeatsTab scene={scene} />}
         </motion.div>
       </div>
     </div>
   );
+}
+
+// ─── Save Status Indicator ─────────────────────────────────────────────────
+
+function SaveStatusIndicator({
+  status,
+  lastSaved,
+  isPending,
+}: {
+  status: "idle" | "saving" | "saved" | "error";
+  lastSaved: Date | null;
+  isPending: boolean;
+}) {
+  const getStatusText = () => {
+    if (isPending) return "Unsaved changes...";
+    switch (status) {
+      case "saving":
+        return "Saving...";
+      case "saved":
+        return lastSaved
+          ? `Saved ${formatTimeAgo(lastSaved)}`
+          : "Saved";
+      case "error":
+        return "Save failed";
+      default:
+        return lastSaved ? `Saved ${formatTimeAgo(lastSaved)}` : "";
+    }
+  };
+
+  const statusText = getStatusText();
+  if (!statusText) return null;
+
+  return (
+    <span
+      className={clsx(
+        "text-micro transition-colors",
+        status === "error" ? "text-status-error" : "text-text-subtle"
+      )}
+    >
+      {status === "saving" && (
+        <span className="inline-block w-2 h-2 mr-1.5 rounded-full bg-accent-primary animate-pulse" />
+      )}
+      {status === "saved" && (
+        <span className="inline-block w-2 h-2 mr-1.5 rounded-full bg-status-success" />
+      )}
+      {statusText}
+    </span>
+  );
+}
+
+function formatTimeAgo(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 5) return "just now";
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  return `${Math.floor(minutes / 60)}h ago`;
 }
 
 // ─── Tab Button ────────────────────────────────────────────────────────────
@@ -204,35 +329,45 @@ function TabButton({
 function OverviewTab({
   scene,
   location,
+  editedPurpose,
+  editedSummary,
+  onPurposeChange,
+  onSummaryChange,
 }: {
   scene: Scene;
   location?: Location | null;
+  editedPurpose: string;
+  editedSummary: string;
+  onPurposeChange: (value: string) => void;
+  onSummaryChange: (value: string) => void;
 }) {
   return (
     <div className="space-y-6">
       {/* Purpose */}
-      {scene.purpose && (
-        <div>
-          <h3 className="text-caption font-semibold text-text-muted uppercase tracking-wider mb-2">
-            Purpose
-          </h3>
-          <p className="text-body text-text-primary leading-relaxed">
-            {scene.purpose}
-          </p>
-        </div>
-      )}
+      <div>
+        <h3 className="text-caption font-semibold text-text-muted uppercase tracking-wider mb-2">
+          Purpose
+        </h3>
+        <textarea
+          value={editedPurpose}
+          onChange={(e) => onPurposeChange(e.target.value)}
+          placeholder="What does this scene accomplish in the story?"
+          className="w-full min-h-[80px] p-3 bg-bg-elevated border border-border-subtle rounded-lg text-body text-text-primary leading-relaxed resize-none focus:outline-none focus:border-accent-primary placeholder:text-text-subtle"
+        />
+      </div>
 
       {/* Summary */}
-      {scene.summary && (
-        <div>
-          <h3 className="text-caption font-semibold text-text-muted uppercase tracking-wider mb-2">
-            Summary
-          </h3>
-          <p className="text-body text-text-primary leading-relaxed whitespace-pre-wrap">
-            {scene.summary}
-          </p>
-        </div>
-      )}
+      <div>
+        <h3 className="text-caption font-semibold text-text-muted uppercase tracking-wider mb-2">
+          Summary
+        </h3>
+        <textarea
+          value={editedSummary}
+          onChange={(e) => onSummaryChange(e.target.value)}
+          placeholder="Brief overview of what happens in this scene..."
+          className="w-full min-h-[120px] p-3 bg-bg-elevated border border-border-subtle rounded-lg text-body text-text-primary leading-relaxed resize-none focus:outline-none focus:border-accent-primary placeholder:text-text-subtle"
+        />
+      </div>
 
       {/* Location details */}
       {location?.description && (
@@ -244,56 +379,10 @@ function OverviewTab({
             <span className="text-subtitle font-medium text-text-primary">
               {location.name}
             </span>
-            <p className="text-body text-text-muted mt-1">
-              {location.description}
-            </p>
+            <p className="text-body text-text-muted mt-1">{location.description}</p>
           </div>
         </div>
       )}
-
-      {/* Empty state */}
-      {!scene.purpose && !scene.summary && (
-        <div className="text-center py-12">
-          <p className="text-text-subtle text-caption">
-            No overview details yet. Add a purpose or summary to this scene.
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Content Tab ───────────────────────────────────────────────────────────
-
-function ContentTab({
-  scene,
-  onUpdate,
-}: {
-  scene: Scene;
-  onUpdate?: (data: Partial<Scene>) => void;
-}) {
-  const [content, setContent] = useState(scene.summary || "");
-
-  return (
-    <div className="h-full">
-      {/* Editor container */}
-      <div className="relative card card-elevated">
-        {/* Left rule line */}
-        <div className="absolute left-8 top-0 bottom-0 w-px bg-border-subtle" />
-
-        {/* Editor */}
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Write your scene content here..."
-          className="w-full min-h-[400px] p-6 pl-12 bg-transparent text-text-primary text-body leading-relaxed resize-none focus:outline-none placeholder:text-text-subtle"
-        />
-
-        {/* Character count */}
-        <div className="absolute bottom-4 right-4 text-micro text-text-subtle">
-          {content.length} characters
-        </div>
-      </div>
     </div>
   );
 }

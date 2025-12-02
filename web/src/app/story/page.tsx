@@ -18,6 +18,7 @@ import type {
   WorldRule,
   AgentOutput,
   AgentType,
+  UpdateSceneDto,
 } from "@/types";
 
 const LAST_PROJECT_KEY = "directoris:lastProjectId";
@@ -121,6 +122,29 @@ export default function StoryPage() {
     loadData();
   }, [router, loadProjectData]);
 
+  // Handle scene selection - fetch full scene data
+  const handleSelectScene = useCallback(async (scene: Scene | null) => {
+    if (!scene) {
+      setSelectedScene(null);
+      return;
+    }
+
+    // If scene already has full data (purpose/summary), use it directly
+    // Otherwise fetch full scene details from API
+    if (scene.summary !== undefined || scene.purpose !== undefined) {
+      setSelectedScene(scene);
+    } else {
+      try {
+        const fullScene = await api.scenes.get(scene.id);
+        setSelectedScene(fullScene);
+      } catch (err) {
+        console.error("Failed to load scene details:", err);
+        // Fallback to partial scene data
+        setSelectedScene(scene);
+      }
+    }
+  }, []);
+
   // Load suggestions when scene changes
   useEffect(() => {
     if (!selectedScene) return;
@@ -138,7 +162,7 @@ export default function StoryPage() {
     }
 
     loadSuggestions();
-  }, [selectedScene]);
+  }, [selectedScene?.id]);
 
   // Run agents
   const handleRunAgents = useCallback(
@@ -175,6 +199,108 @@ export default function StoryPage() {
       }
     },
     []
+  );
+
+  // Create scene
+  const handleCreateScene = useCallback(
+    async (sequenceId: string, title: string) => {
+      try {
+        // Get current scenes count in sequence to determine index
+        let sceneIndex = 0;
+        for (const act of acts) {
+          for (const seq of act.sequences || []) {
+            if (seq.id === sequenceId) {
+              sceneIndex = (seq.scenes?.length || 0) + 1;
+              break;
+            }
+          }
+        }
+
+        const newScene = await api.scenes.create(sequenceId, {
+          index: sceneIndex,
+          title,
+        });
+
+        // Update acts state to include the new scene
+        setActs((prev) =>
+          prev.map((act) => ({
+            ...act,
+            sequences: act.sequences?.map((seq) =>
+              seq.id === sequenceId
+                ? { ...seq, scenes: [...(seq.scenes || []), newScene] }
+                : seq
+            ),
+          }))
+        );
+
+        // Auto-select the new scene (it already has full data from create response)
+        setSelectedScene(newScene);
+      } catch (err) {
+        console.error("Failed to create scene:", err);
+        throw err;
+      }
+    },
+    [acts]
+  );
+
+  // Update scene
+  const handleUpdateScene = useCallback(
+    async (sceneId: string, data: UpdateSceneDto) => {
+      try {
+        const updated = await api.scenes.update(sceneId, data);
+
+        // Update acts state with the updated scene
+        setActs((prev) =>
+          prev.map((act) => ({
+            ...act,
+            sequences: act.sequences?.map((seq) => ({
+              ...seq,
+              scenes: seq.scenes?.map((scene) =>
+                scene.id === sceneId ? { ...scene, ...updated } : scene
+              ),
+            })),
+          }))
+        );
+
+        // Update selected scene if it's the one being updated
+        if (selectedScene?.id === sceneId) {
+          setSelectedScene((prev) => (prev ? { ...prev, ...updated } : prev));
+        }
+      } catch (err) {
+        console.error("Failed to update scene:", err);
+        throw err;
+      }
+    },
+    [selectedScene?.id]
+  );
+
+  // Delete scene
+  const handleDeleteScene = useCallback(
+    async (sceneId: string) => {
+      try {
+        await api.scenes.delete(sceneId);
+
+        // Update acts state to remove the deleted scene
+        setActs((prev) =>
+          prev.map((act) => ({
+            ...act,
+            sequences: act.sequences?.map((seq) => ({
+              ...seq,
+              scenes: seq.scenes?.filter((scene) => scene.id !== sceneId),
+            })),
+          }))
+        );
+
+        // Clear selection if deleted scene was selected
+        if (selectedScene?.id === sceneId) {
+          setSelectedScene(null);
+        }
+      } catch (err) {
+        console.error("Failed to delete scene:", err);
+        throw err;
+      }
+    },
+    [selectedScene?.id]
   );
 
   // Switch to a different project
@@ -326,13 +452,13 @@ export default function StoryPage() {
       setShowOnboardingChecklist(true);
       localStorage.setItem(LAST_PROJECT_KEY, newProject.id);
 
-      // Select the first scene if available
+      // Select the first scene if available (will fetch full data)
       if (safeCreatedActs.length > 0) {
         const firstAct = safeCreatedActs[0];
         if (firstAct.sequences && firstAct.sequences.length > 0) {
           const firstSeq = firstAct.sequences[0];
           if (firstSeq.scenes && firstSeq.scenes.length > 0) {
-            setSelectedScene(firstSeq.scenes[0]);
+            handleSelectScene(firstSeq.scenes[0]);
           }
         }
       }
@@ -478,8 +604,10 @@ export default function StoryPage() {
               <SceneTree
                 acts={acts}
                 selectedSceneId={selectedScene?.id || null}
-                onSelectScene={setSelectedScene}
+                onSelectScene={handleSelectScene}
                 suggestionCounts={suggestionCounts}
+                onCreateScene={handleCreateScene}
+                onDeleteScene={handleDeleteScene}
               />
 
               {/* Onboarding checklist */}
@@ -500,6 +628,7 @@ export default function StoryPage() {
               actTitle={actTitle}
               characters={characters}
               location={selectedLocation}
+              onUpdateScene={handleUpdateScene}
             />
 
             {/* Pane C: Agent Panel */}

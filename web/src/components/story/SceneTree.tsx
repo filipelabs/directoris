@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
+import { InlineAddForm, AddButton } from "./InlineAddForm";
 import type { Act, Sequence, Scene } from "@/types";
 
 interface SceneTreeProps {
@@ -10,6 +11,8 @@ interface SceneTreeProps {
   selectedSceneId: string | null;
   onSelectScene: (scene: Scene) => void;
   suggestionCounts?: Record<string, number>;
+  onCreateScene?: (sequenceId: string, title: string) => Promise<void>;
+  onDeleteScene?: (sceneId: string) => Promise<void>;
 }
 
 export function SceneTree({
@@ -17,8 +20,9 @@ export function SceneTree({
   selectedSceneId,
   onSelectScene,
   suggestionCounts = {},
+  onCreateScene,
+  onDeleteScene,
 }: SceneTreeProps) {
-  // Ensure acts is always an array
   const safeActs = acts || [];
 
   const [expandedActs, setExpandedActs] = useState<Set<string>>(
@@ -59,21 +63,6 @@ export function SceneTree({
         <span className="text-caption font-semibold text-text-muted uppercase tracking-wider">
           Structure
         </span>
-        <button className="text-text-subtle hover:text-accent-primary transition-colors">
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={1.5}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 4.5v15m7.5-7.5h-15"
-            />
-          </svg>
-        </button>
       </div>
 
       {/* Tree */}
@@ -89,6 +78,8 @@ export function SceneTree({
             selectedSceneId={selectedSceneId}
             onSelectScene={onSelectScene}
             suggestionCounts={suggestionCounts}
+            onCreateScene={onCreateScene}
+            onDeleteScene={onDeleteScene}
           />
         ))}
       </div>
@@ -116,6 +107,8 @@ interface ActNodeProps {
   selectedSceneId: string | null;
   onSelectScene: (scene: Scene) => void;
   suggestionCounts: Record<string, number>;
+  onCreateScene?: (sequenceId: string, title: string) => Promise<void>;
+  onDeleteScene?: (sceneId: string) => Promise<void>;
 }
 
 function ActNode({
@@ -127,6 +120,8 @@ function ActNode({
   selectedSceneId,
   onSelectScene,
   suggestionCounts,
+  onCreateScene,
+  onDeleteScene,
 }: ActNodeProps) {
   return (
     <div>
@@ -163,6 +158,8 @@ function ActNode({
                 selectedSceneId={selectedSceneId}
                 onSelectScene={onSelectScene}
                 suggestionCounts={suggestionCounts}
+                onCreateScene={onCreateScene}
+                onDeleteScene={onDeleteScene}
               />
             ))}
           </motion.div>
@@ -181,6 +178,8 @@ interface SequenceNodeProps {
   selectedSceneId: string | null;
   onSelectScene: (scene: Scene) => void;
   suggestionCounts: Record<string, number>;
+  onCreateScene?: (sequenceId: string, title: string) => Promise<void>;
+  onDeleteScene?: (sceneId: string) => Promise<void>;
 }
 
 function SequenceNode({
@@ -190,7 +189,18 @@ function SequenceNode({
   selectedSceneId,
   onSelectScene,
   suggestionCounts,
+  onCreateScene,
+  onDeleteScene,
 }: SequenceNodeProps) {
+  const [isAddingScene, setIsAddingScene] = useState(false);
+
+  const handleCreateScene = async (title: string) => {
+    if (onCreateScene) {
+      await onCreateScene(sequence.id, title);
+      setIsAddingScene(false);
+    }
+  };
+
   return (
     <div className="pl-4">
       {/* Sequence header */}
@@ -209,7 +219,7 @@ function SequenceNode({
 
       {/* Scenes */}
       <AnimatePresence initial={false}>
-        {isExpanded && sequence.scenes && (
+        {isExpanded && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -217,15 +227,36 @@ function SequenceNode({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            {sequence.scenes.map((scene) => (
+            {sequence.scenes?.map((scene) => (
               <SceneRow
                 key={scene.id}
                 scene={scene}
                 isSelected={selectedSceneId === scene.id}
                 onClick={() => onSelectScene(scene)}
                 suggestionCount={suggestionCounts[scene.id] || 0}
+                onDelete={onDeleteScene}
               />
             ))}
+
+            {/* Add Scene - inline form or button */}
+            {onCreateScene && (
+              <div className="pl-4">
+                <InlineAddForm
+                  placeholder="New scene title..."
+                  onSubmit={handleCreateScene}
+                  onCancel={() => setIsAddingScene(false)}
+                  isVisible={isAddingScene}
+                  indentLevel={2}
+                />
+                {!isAddingScene && (
+                  <AddButton
+                    label="Add Scene"
+                    onClick={() => setIsAddingScene(true)}
+                    indentLevel={2}
+                  />
+                )}
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -240,6 +271,7 @@ interface SceneRowProps {
   isSelected: boolean;
   onClick: () => void;
   suggestionCount: number;
+  onDelete?: (sceneId: string) => Promise<void>;
 }
 
 function SceneRow({
@@ -247,54 +279,91 @@ function SceneRow({
   isSelected,
   onClick,
   suggestionCount,
+  onDelete,
 }: SceneRowProps) {
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDelete && confirm(`Delete scene "${scene.title}"?`)) {
+      await onDelete(scene.id);
+    }
+  };
+
   return (
-    <button
-      onClick={onClick}
-      className={clsx(
-        "relative w-full flex items-center gap-2 px-4 py-2 pl-12 transition-colors",
-        isSelected
-          ? "bg-accent-primary-soft"
-          : "hover:bg-bg-hover"
-      )}
+    <div
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="relative"
     >
-      {/* Selection indicator */}
-      {isSelected && (
-        <motion.div
-          layoutId="scene-active"
-          className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-accent-primary rounded-full"
-          transition={{ type: "spring", stiffness: 500, damping: 30 }}
-        />
-      )}
-
-      {/* Scene number */}
-      <span className="text-mono text-text-subtle text-xs shrink-0">
-        SCN {String(scene.index + 1).padStart(2, "0")}
-      </span>
-
-      {/* Title */}
-      <span
+      <button
+        onClick={onClick}
         className={clsx(
-          "text-caption truncate flex-1 text-left",
-          isSelected ? "text-text-primary" : "text-text-muted"
+          "relative w-full flex items-center gap-2 px-4 py-2 pl-12 transition-colors",
+          isSelected ? "bg-accent-primary-soft" : "hover:bg-bg-hover"
         )}
       >
-        {scene.title}
-      </span>
-
-      {/* Right side: status + suggestion count */}
-      <div className="flex items-center gap-2 shrink-0">
-        {/* Status dot */}
-        <span className="w-1.5 h-1.5 rounded-full bg-text-subtle" />
-
-        {/* Suggestion badge */}
-        {suggestionCount > 0 && (
-          <span className="chip chip-accent text-micro px-1.5 py-0.5">
-            {suggestionCount}
-          </span>
+        {/* Selection indicator */}
+        {isSelected && (
+          <motion.div
+            layoutId="scene-active"
+            className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-accent-primary rounded-full"
+            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+          />
         )}
-      </div>
-    </button>
+
+        {/* Scene number */}
+        <span className="text-mono text-text-subtle text-xs shrink-0">
+          SCN {String(scene.index + 1).padStart(2, "0")}
+        </span>
+
+        {/* Title */}
+        <span
+          className={clsx(
+            "text-caption truncate flex-1 text-left",
+            isSelected ? "text-text-primary" : "text-text-muted"
+          )}
+        >
+          {scene.title}
+        </span>
+
+        {/* Right side: status + suggestion count */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Status dot */}
+          <span className="w-1.5 h-1.5 rounded-full bg-text-subtle" />
+
+          {/* Suggestion badge */}
+          {suggestionCount > 0 && (
+            <span className="chip chip-accent text-micro px-1.5 py-0.5">
+              {suggestionCount}
+            </span>
+          )}
+        </div>
+      </button>
+
+      {/* Delete button (hover) */}
+      {onDelete && isHovered && (
+        <button
+          onClick={handleDelete}
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-subtle hover:text-status-error transition-colors rounded"
+          title="Delete scene"
+        >
+          <svg
+            className="w-3.5 h-3.5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M6 18 18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      )}
+    </div>
   );
 }
 

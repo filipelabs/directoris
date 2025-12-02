@@ -22,6 +22,7 @@ import type {
   CreateActDto,
   CreateSequenceDto,
   CreateSceneDto,
+  UpdateSceneDto,
   CreateCharacterDto,
   CreateWorldRuleDto,
   CreateCharacterFactDto,
@@ -177,7 +178,7 @@ export const scenes = {
       body: JSON.stringify(data),
     }),
 
-  update: (id: string, data: Partial<CreateSceneDto>) =>
+  update: (id: string, data: UpdateSceneDto) =>
     apiFetch<Scene>(`/scenes/${id}`, {
       method: "PATCH",
       body: JSON.stringify(data),

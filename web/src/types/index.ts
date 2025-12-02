@@ -252,6 +252,14 @@ export interface CreateSceneDto {
   locationId?: string;
 }
 
+export interface UpdateSceneDto {
+  title?: string;
+  summary?: string;
+  purpose?: string;
+  tone?: string;
+  locationId?: string;
+}
+
 export interface CreateCharacterDto {
   name: string;
   bio?: string;
