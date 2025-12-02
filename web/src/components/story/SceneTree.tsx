@@ -199,7 +199,7 @@ function ActNode({
         >
           <ChevronIcon isExpanded={isExpanded} />
           <span className="text-mono text-text-subtle text-xs">
-            ACT {toRoman(act.index + 1)}
+            ACT {toRoman(act.index)}
           </span>
           <span className="text-caption font-medium text-text-primary truncate">
             {act.title}
@@ -337,7 +337,7 @@ function SequenceNode({
         >
           <ChevronIcon isExpanded={isExpanded} />
           <span className="text-mono text-text-subtle text-xs">
-            SEQ {String(sequence.index + 1).padStart(2, "0")}
+            SEQ {String(sequence.index).padStart(2, "0")}
           </span>
           <span className="text-caption text-text-muted truncate group-hover:text-text-primary">
             {sequence.title}
@@ -465,7 +465,7 @@ function SceneRow({
 
         {/* Scene number */}
         <span className="text-mono text-text-subtle text-xs shrink-0">
-          SCN {String(scene.index + 1).padStart(2, "0")}
+          SCN {String(scene.index).padStart(2, "0")}
         </span>
 
         {/* Title */}
