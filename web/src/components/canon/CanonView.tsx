@@ -139,7 +139,7 @@ export function CanonView({
   );
 
   return (
-    <div className="col-span-3 flex flex-col h-full">
+    <div className="col-span-3 flex flex-col overflow-hidden">
       {/* Tab Bar */}
       <div className="flex items-center gap-1 px-6 py-3 border-b border-border-subtle bg-bg-surface">
         <TabButton
@@ -155,7 +155,7 @@ export function CanonView({
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         {activeTab === "characters" ? (
           <>
             <CharacterList

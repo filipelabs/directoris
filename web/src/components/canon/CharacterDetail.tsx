@@ -145,7 +145,7 @@ export function CharacterDetail({
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-bg-surface overflow-hidden">
+    <div className="flex-1 flex flex-col bg-bg-surface overflow-hidden min-h-0">
       {/* Header */}
       <header className="px-6 py-4 border-b border-border-subtle flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -194,7 +194,7 @@ export function CharacterDetail({
       </header>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-8">
+      <div className="flex-1 overflow-y-auto p-6 space-y-8 min-h-0">
         {/* Basic Info */}
         <section>
           <h2 className="text-caption font-semibold text-text-muted uppercase tracking-wider mb-4">
