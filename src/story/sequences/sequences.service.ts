@@ -25,9 +25,24 @@ export class SequencesService {
       ProjectRole.EDITOR,
     ]);
 
+    // Auto-calculate next index if not provided or if conflict exists
+    let index = dto.index;
+    const maxSequence = await this.prisma.sequence.findFirst({
+      where: { actId },
+      orderBy: { index: 'desc' },
+      select: { index: true },
+    });
+    const nextIndex = (maxSequence?.index ?? -1) + 1;
+
+    // Use next available index if provided index would conflict
+    if (index <= (maxSequence?.index ?? -1)) {
+      index = nextIndex;
+    }
+
     return this.prisma.sequence.create({
       data: {
         ...dto,
+        index,
         actId,
       },
     });

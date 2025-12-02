@@ -17,9 +17,24 @@ export class ActsService {
       ProjectRole.EDITOR,
     ]);
 
+    // Auto-calculate next index if not provided or if conflict exists
+    let index = dto.index;
+    const maxAct = await this.prisma.act.findFirst({
+      where: { projectId },
+      orderBy: { index: 'desc' },
+      select: { index: true },
+    });
+    const nextIndex = (maxAct?.index ?? -1) + 1;
+
+    // Use next available index if provided index would conflict
+    if (index <= (maxAct?.index ?? -1)) {
+      index = nextIndex;
+    }
+
     return this.prisma.act.create({
       data: {
         ...dto,
+        index,
         projectId,
       },
     });
