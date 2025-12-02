@@ -140,6 +140,12 @@ export const acts = {
     }),
 
   delete: (id: string) => apiFetch<void>(`/acts/${id}`, { method: "DELETE" }),
+
+  reorder: (projectId: string, actIds: string[]) =>
+    apiFetch<{ success: boolean }>(`/projects/${projectId}/acts/reorder`, {
+      method: "PATCH",
+      body: JSON.stringify({ actIds }),
+    }),
 };
 
 // ─── Sequences ─────────────────────────────────────────────────────────────
@@ -163,6 +169,12 @@ export const sequences = {
 
   delete: (id: string) =>
     apiFetch<void>(`/sequences/${id}`, { method: "DELETE" }),
+
+  reorder: (actId: string, sequenceIds: string[]) =>
+    apiFetch<{ success: boolean }>(`/acts/${actId}/sequences/reorder`, {
+      method: "PATCH",
+      body: JSON.stringify({ sequenceIds }),
+    }),
 };
 
 // ─── Scenes ────────────────────────────────────────────────────────────────
@@ -187,6 +199,12 @@ export const scenes = {
 
   delete: (id: string) =>
     apiFetch<void>(`/scenes/${id}`, { method: "DELETE" }),
+
+  reorder: (sequenceId: string, sceneIds: string[]) =>
+    apiFetch<{ success: boolean }>(`/sequences/${sequenceId}/scenes/reorder`, {
+      method: "PATCH",
+      body: JSON.stringify({ sceneIds }),
+    }),
 
   // Agent operations
   runAgents: (sceneId: string, agentTypes?: AgentType[]) =>

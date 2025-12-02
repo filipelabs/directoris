@@ -166,4 +166,31 @@ export class ScenesService {
 
     return { deleted: true };
   }
+
+  async reorder(sequenceId: string, userId: string, sceneIds: string[]) {
+    const projectId = await this.getProjectIdFromSequence(sequenceId);
+
+    await this.projectsService.assertProjectAccess(projectId, userId, [
+      ProjectRole.OWNER,
+      ProjectRole.EDITOR,
+    ]);
+
+    // Two-phase update to avoid unique constraint violation on (sequenceId, index)
+    await this.prisma.$transaction([
+      ...sceneIds.map((id, index) =>
+        this.prisma.scene.update({
+          where: { id },
+          data: { index: -(index + 1000) },
+        }),
+      ),
+      ...sceneIds.map((id, index) =>
+        this.prisma.scene.update({
+          where: { id },
+          data: { index },
+        }),
+      ),
+    ]);
+
+    return { success: true };
+  }
 }

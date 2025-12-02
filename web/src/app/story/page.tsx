@@ -447,6 +447,97 @@ export default function StoryPage() {
     []
   );
 
+  // Reorder acts
+  const handleReorderActs = useCallback(
+    async (actIds: string[]) => {
+      if (!project) return;
+      try {
+        // Optimistic update
+        setActs((prev) => {
+          const actMap = new Map(prev.map((a) => [a.id, a]));
+          return actIds.map((id, index) => ({
+            ...actMap.get(id)!,
+            index: index + 1,
+          }));
+        });
+        await api.acts.reorder(project.id, actIds);
+      } catch (err) {
+        console.error("Failed to reorder acts:", err);
+        // Reload on error
+        if (project) {
+          const actsData = await api.acts.list(project.id);
+          setActs(actsData || []);
+        }
+      }
+    },
+    [project]
+  );
+
+  // Reorder sequences
+  const handleReorderSequences = useCallback(
+    async (actId: string, sequenceIds: string[]) => {
+      try {
+        // Optimistic update
+        setActs((prev) =>
+          prev.map((a) => {
+            if (a.id !== actId) return a;
+            const seqMap = new Map(a.sequences?.map((s) => [s.id, s]) || []);
+            return {
+              ...a,
+              sequences: sequenceIds.map((id, index) => ({
+                ...seqMap.get(id)!,
+                index: index + 1,
+              })),
+            };
+          })
+        );
+        await api.sequences.reorder(actId, sequenceIds);
+      } catch (err) {
+        console.error("Failed to reorder sequences:", err);
+        // Reload on error
+        if (project) {
+          const actsData = await api.acts.list(project.id);
+          setActs(actsData || []);
+        }
+      }
+    },
+    [project]
+  );
+
+  // Reorder scenes
+  const handleReorderScenes = useCallback(
+    async (sequenceId: string, sceneIds: string[]) => {
+      try {
+        // Optimistic update
+        setActs((prev) =>
+          prev.map((a) => ({
+            ...a,
+            sequences: a.sequences?.map((seq) => {
+              if (seq.id !== sequenceId) return seq;
+              const sceneMap = new Map(seq.scenes?.map((s) => [s.id, s]) || []);
+              return {
+                ...seq,
+                scenes: sceneIds.map((id, index) => ({
+                  ...sceneMap.get(id)!,
+                  index: index + 1,
+                })),
+              };
+            }),
+          }))
+        );
+        await api.scenes.reorder(sequenceId, sceneIds);
+      } catch (err) {
+        console.error("Failed to reorder scenes:", err);
+        // Reload on error
+        if (project) {
+          const actsData = await api.acts.list(project.id);
+          setActs(actsData || []);
+        }
+      }
+    },
+    [project]
+  );
+
   // Switch to a different project
   const handleSwitchProject = useCallback(
     async (proj: Project) => {
@@ -758,6 +849,9 @@ export default function StoryPage() {
                 onCreateSequence={handleCreateSequence}
                 onDeleteSequence={handleDeleteSequence}
                 onUpdateSequence={handleUpdateSequence}
+                onReorderActs={handleReorderActs}
+                onReorderSequences={handleReorderSequences}
+                onReorderScenes={handleReorderScenes}
               />
 
               {/* Onboarding checklist */}

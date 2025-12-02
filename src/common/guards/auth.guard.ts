@@ -48,18 +48,14 @@ export class AuthGuard implements CanActivate {
       const cookiePassword = this.configService.get<string>(
         'workos.cookiePassword',
       );
-      console.log('[AuthGuard] Cookie password length:', cookiePassword?.length);
-      console.log('[AuthGuard] Session cookie length:', sessionCookie?.length);
 
       // Use authenticateWithSessionCookie to validate the sealed session
       const authResult = await this.workos.userManagement.authenticateWithSessionCookie({
         sessionData: sessionCookie,
         cookiePassword: cookiePassword!,
       });
-      console.log('[AuthGuard] Auth result:', JSON.stringify(authResult, null, 2));
 
       if (!authResult.authenticated) {
-        console.log('[AuthGuard] Not authenticated, reason:', authResult.reason);
         throw new UnauthorizedException('Invalid session');
       }
 
@@ -89,8 +85,7 @@ export class AuthGuard implements CanActivate {
 
       request.user = user;
       return true;
-    } catch (error) {
-      console.error('[AuthGuard] Error:', error);
+    } catch {
       throw new UnauthorizedException('Authentication failed');
     }
   }

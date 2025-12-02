@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ActsService } from './acts.service';
-import { CreateActDto, UpdateActDto } from './dto';
+import { CreateActDto, UpdateActDto, ReorderActsDto } from './dto';
 import { CurrentUser } from '../../common/decorators';
 import type { User } from '../../generated/prisma';
 
@@ -58,5 +58,15 @@ export class ActsController {
   @ApiOperation({ summary: 'Delete act' })
   delete(@CurrentUser() user: User, @Param('id') id: string) {
     return this.actsService.delete(id, user.id);
+  }
+
+  @Patch('projects/:projectId/acts/reorder')
+  @ApiOperation({ summary: 'Reorder acts in a project' })
+  reorder(
+    @CurrentUser() user: User,
+    @Param('projectId') projectId: string,
+    @Body() dto: ReorderActsDto,
+  ) {
+    return this.actsService.reorder(projectId, user.id, dto.actIds);
   }
 }

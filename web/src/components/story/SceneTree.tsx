@@ -3,6 +3,28 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
+import {
+  DndContext,
+  DragOverlay,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+  type CollisionDetection,
+  pointerWithin,
+  rectIntersection,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { InlineAddForm, AddButton } from "./InlineAddForm";
 import type { Act, Sequence, Scene } from "@/types";
 
@@ -19,6 +41,9 @@ interface SceneTreeProps {
   onCreateSequence?: (actId: string, title: string) => Promise<void>;
   onDeleteSequence?: (sequenceId: string) => Promise<void>;
   onUpdateSequence?: (sequenceId: string, title: string) => Promise<void>;
+  onReorderActs?: (actIds: string[]) => Promise<void>;
+  onReorderSequences?: (actId: string, sequenceIds: string[]) => Promise<void>;
+  onReorderScenes?: (sequenceId: string, sceneIds: string[]) => Promise<void>;
 }
 
 export function SceneTree({
@@ -34,9 +59,46 @@ export function SceneTree({
   onCreateSequence,
   onDeleteSequence,
   onUpdateSequence,
+  onReorderActs,
+  onReorderSequences,
+  onReorderScenes,
 }: SceneTreeProps) {
   const safeActs = acts || [];
   const [isAddingAct, setIsAddingAct] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeType, setActiveType] = useState<"act" | "sequence" | "scene" | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Custom collision detection that only allows dropping on same-type items
+  const customCollisionDetection: CollisionDetection = (args) => {
+    const { active } = args;
+    const activeIdStr = active.id as string;
+
+    // Get the type prefix of the active item
+    let activePrefix = "";
+    if (activeIdStr.startsWith("act-")) activePrefix = "act-";
+    else if (activeIdStr.startsWith("seq-")) activePrefix = "seq-";
+    else if (activeIdStr.startsWith("scene-")) activePrefix = "scene-";
+
+    // Use closestCenter but filter to only same-type items
+    const collisions = closestCenter(args);
+
+    // Filter collisions to only include same-type items
+    return collisions.filter((collision) => {
+      const collidedId = collision.id as string;
+      return collidedId.startsWith(activePrefix);
+    });
+  };
 
   const handleCreateAct = async (title: string) => {
     if (onCreateAct) {
@@ -76,6 +138,111 @@ export function SceneTree({
     });
   };
 
+  const handleDragStart = (event: DragStartEvent) => {
+    const id = event.active.id as string;
+    if (id.startsWith("act-")) {
+      setActiveId(id.replace("act-", ""));
+      setActiveType("act");
+    } else if (id.startsWith("seq-")) {
+      setActiveId(id.replace("seq-", ""));
+      setActiveType("sequence");
+    } else if (id.startsWith("scene-")) {
+      setActiveId(id.replace("scene-", ""));
+      setActiveType("scene");
+    }
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+    setActiveType(null);
+
+    if (!over || active.id === over.id) return;
+
+    const activeIdStr = active.id as string;
+    const overIdStr = over.id as string;
+
+    // Reorder acts
+    if (activeIdStr.startsWith("act-") && overIdStr.startsWith("act-")) {
+      const activeActId = activeIdStr.replace("act-", "");
+      const overActId = overIdStr.replace("act-", "");
+
+      const oldIndex = safeActs.findIndex((a) => a.id === activeActId);
+      const newIndex = safeActs.findIndex((a) => a.id === overActId);
+
+      if (oldIndex !== -1 && newIndex !== -1 && onReorderActs) {
+        const newOrder = arrayMove(safeActs, oldIndex, newIndex);
+        await onReorderActs(newOrder.map((a) => a.id));
+      }
+    }
+
+    // Reorder sequences within an act
+    if (activeIdStr.startsWith("seq-") && overIdStr.startsWith("seq-")) {
+      const activeSeqId = activeIdStr.replace("seq-", "");
+      const overSeqId = overIdStr.replace("seq-", "");
+
+      // Find which act contains both sequences
+      for (const act of safeActs) {
+        const sequences = act.sequences || [];
+        const activeIndex = sequences.findIndex((s) => s.id === activeSeqId);
+        const overIndex = sequences.findIndex((s) => s.id === overSeqId);
+
+        if (activeIndex !== -1 && overIndex !== -1 && onReorderSequences) {
+          const newOrder = arrayMove(sequences, activeIndex, overIndex);
+          await onReorderSequences(act.id, newOrder.map((s) => s.id));
+          break;
+        }
+      }
+    }
+
+    // Reorder scenes within a sequence
+    if (activeIdStr.startsWith("scene-") && overIdStr.startsWith("scene-")) {
+      const activeSceneId = activeIdStr.replace("scene-", "");
+      const overSceneId = overIdStr.replace("scene-", "");
+
+      // Find which sequence contains both scenes
+      for (const act of safeActs) {
+        for (const seq of act.sequences || []) {
+          const scenes = seq.scenes || [];
+          const activeIndex = scenes.findIndex((s) => s.id === activeSceneId);
+          const overIndex = scenes.findIndex((s) => s.id === overSceneId);
+
+          if (activeIndex !== -1 && overIndex !== -1 && onReorderScenes) {
+            const newOrder = arrayMove(scenes, activeIndex, overIndex);
+            await onReorderScenes(seq.id, newOrder.map((s) => s.id));
+            break;
+          }
+        }
+      }
+    }
+  };
+
+  // Find active item for drag overlay
+  const getActiveItem = () => {
+    if (!activeId || !activeType) return null;
+
+    if (activeType === "act") {
+      return safeActs.find((a) => a.id === activeId);
+    }
+    if (activeType === "sequence") {
+      for (const act of safeActs) {
+        const seq = act.sequences?.find((s) => s.id === activeId);
+        if (seq) return seq;
+      }
+    }
+    if (activeType === "scene") {
+      for (const act of safeActs) {
+        for (const seq of act.sequences || []) {
+          const scene = seq.scenes?.find((s) => s.id === activeId);
+          if (scene) return scene;
+        }
+      }
+    }
+    return null;
+  };
+
+  const activeItem = getActiveItem();
+
   return (
     <div className="pane pane-a py-4">
       {/* Header */}
@@ -86,48 +253,95 @@ export function SceneTree({
       </div>
 
       {/* Tree */}
-      <div className="flex flex-col">
-        {safeActs.map((act) => (
-          <ActNode
-            key={act.id}
-            act={act}
-            isExpanded={expandedActs.has(act.id)}
-            onToggle={() => toggleAct(act.id)}
-            expandedSequences={expandedSequences}
-            onToggleSequence={toggleSequence}
-            selectedSceneId={selectedSceneId}
-            onSelectScene={onSelectScene}
-            suggestionCounts={suggestionCounts}
-            onCreateScene={onCreateScene}
-            onDeleteScene={onDeleteScene}
-            onDeleteAct={onDeleteAct}
-            onUpdateAct={onUpdateAct}
-            onCreateSequence={onCreateSequence}
-            onDeleteSequence={onDeleteSequence}
-            onUpdateSequence={onUpdateSequence}
-          />
-        ))}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={customCollisionDetection}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="flex flex-col">
+          <SortableContext
+            items={safeActs.map((a) => `act-${a.id}`)}
+            strategy={verticalListSortingStrategy}
+          >
+            {safeActs.map((act) => (
+              <SortableActNode
+                key={act.id}
+                act={act}
+                isExpanded={expandedActs.has(act.id)}
+                onToggle={() => toggleAct(act.id)}
+                expandedSequences={expandedSequences}
+                onToggleSequence={toggleSequence}
+                selectedSceneId={selectedSceneId}
+                onSelectScene={onSelectScene}
+                suggestionCounts={suggestionCounts}
+                onCreateScene={onCreateScene}
+                onDeleteScene={onDeleteScene}
+                onDeleteAct={onDeleteAct}
+                onUpdateAct={onUpdateAct}
+                onCreateSequence={onCreateSequence}
+                onDeleteSequence={onDeleteSequence}
+                onUpdateSequence={onUpdateSequence}
+                onReorderScenes={onReorderScenes}
+              />
+            ))}
+          </SortableContext>
 
-        {/* Add Act */}
-        {onCreateAct && (
-          <div className="px-4 mt-2">
-            <InlineAddForm
-              placeholder="New act title..."
-              onSubmit={handleCreateAct}
-              onCancel={() => setIsAddingAct(false)}
-              isVisible={isAddingAct}
-              indentLevel={0}
-            />
-            {!isAddingAct && (
-              <AddButton
-                label="Add Act"
-                onClick={() => setIsAddingAct(true)}
+          {/* Add Act */}
+          {onCreateAct && (
+            <div className="px-4 mt-2">
+              <InlineAddForm
+                placeholder="New act title..."
+                onSubmit={handleCreateAct}
+                onCancel={() => setIsAddingAct(false)}
+                isVisible={isAddingAct}
                 indentLevel={0}
               />
-            )}
-          </div>
-        )}
-      </div>
+              {!isAddingAct && (
+                <AddButton
+                  label="Add Act"
+                  onClick={() => setIsAddingAct(true)}
+                  indentLevel={0}
+                />
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Drag Overlay */}
+        <DragOverlay>
+          {activeItem && activeType === "act" && (
+            <div className="bg-bg-elevated border border-border-default rounded px-4 py-2 shadow-lg">
+              <span className="text-mono text-text-subtle text-xs mr-2">
+                ACT {toRoman((activeItem as Act).index)}
+              </span>
+              <span className="text-caption font-medium text-text-primary">
+                {(activeItem as Act).title}
+              </span>
+            </div>
+          )}
+          {activeItem && activeType === "sequence" && (
+            <div className="bg-bg-elevated border border-border-default rounded px-4 py-1.5 shadow-lg">
+              <span className="text-mono text-text-subtle text-xs mr-2">
+                SEQ {String((activeItem as Sequence).index).padStart(2, "0")}
+              </span>
+              <span className="text-caption text-text-muted">
+                {(activeItem as Sequence).title}
+              </span>
+            </div>
+          )}
+          {activeItem && activeType === "scene" && (
+            <div className="bg-bg-elevated border border-border-default rounded px-4 py-2 shadow-lg">
+              <span className="text-mono text-text-subtle text-xs mr-2">
+                SCN {String((activeItem as Scene).index).padStart(2, "0")}
+              </span>
+              <span className="text-caption text-text-muted">
+                {(activeItem as Scene).title}
+              </span>
+            </div>
+          )}
+        </DragOverlay>
+      </DndContext>
 
       {/* Empty state */}
       {safeActs.length === 0 && !isAddingAct && (
@@ -137,6 +351,55 @@ export function SceneTree({
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Drag Handle Icon ──────────────────────────────────────────────────────
+
+function DragHandleIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={clsx("w-3 h-3 text-text-subtle", className)}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4 8h16M4 16h16"
+      />
+    </svg>
+  );
+}
+
+// ─── Sortable Act Node ─────────────────────────────────────────────────────
+
+interface SortableActNodeProps extends ActNodeProps {
+  onReorderScenes?: (sequenceId: string, sceneIds: string[]) => Promise<void>;
+}
+
+function SortableActNode(props: SortableActNodeProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: `act-${props.act.id}` });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <ActNode {...props} dragHandleProps={{ ...attributes, ...listeners }} />
     </div>
   );
 }
@@ -159,6 +422,8 @@ interface ActNodeProps {
   onCreateSequence?: (actId: string, title: string) => Promise<void>;
   onDeleteSequence?: (sequenceId: string) => Promise<void>;
   onUpdateSequence?: (sequenceId: string, title: string) => Promise<void>;
+  onReorderScenes?: (sequenceId: string, sceneIds: string[]) => Promise<void>;
+  dragHandleProps?: Record<string, unknown>;
 }
 
 function ActNode({
@@ -177,6 +442,8 @@ function ActNode({
   onCreateSequence,
   onDeleteSequence,
   onUpdateSequence,
+  onReorderScenes,
+  dragHandleProps,
 }: ActNodeProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isAddingSequence, setIsAddingSequence] = useState(false);
@@ -243,7 +510,10 @@ function ActNode({
           className="w-full flex items-center gap-2 px-4 py-2 hover:bg-bg-hover transition-colors group"
         >
           <ChevronIcon isExpanded={isExpanded} />
-          <span className="text-mono text-text-subtle text-xs">
+          <span
+            {...dragHandleProps}
+            className="text-mono text-text-subtle text-xs cursor-grab active:cursor-grabbing hover:text-text-primary transition-colors"
+          >
             ACT {toRoman(act.index)}
           </span>
           {isEditing ? (
@@ -304,21 +574,27 @@ function ActNode({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            {act.sequences?.map((seq) => (
-              <SequenceNode
-                key={seq.id}
-                sequence={seq}
-                isExpanded={expandedSequences.has(seq.id)}
-                onToggle={() => onToggleSequence(seq.id)}
-                selectedSceneId={selectedSceneId}
-                onSelectScene={onSelectScene}
-                suggestionCounts={suggestionCounts}
-                onCreateScene={onCreateScene}
-                onDeleteScene={onDeleteScene}
-                onDeleteSequence={onDeleteSequence}
-                onUpdateSequence={onUpdateSequence}
-              />
-            ))}
+            <SortableContext
+              items={(act.sequences || []).map((s) => `seq-${s.id}`)}
+              strategy={verticalListSortingStrategy}
+            >
+              {act.sequences?.map((seq) => (
+                <SortableSequenceNode
+                  key={seq.id}
+                  sequence={seq}
+                  isExpanded={expandedSequences.has(seq.id)}
+                  onToggle={() => onToggleSequence(seq.id)}
+                  selectedSceneId={selectedSceneId}
+                  onSelectScene={onSelectScene}
+                  suggestionCounts={suggestionCounts}
+                  onCreateScene={onCreateScene}
+                  onDeleteScene={onDeleteScene}
+                  onDeleteSequence={onDeleteSequence}
+                  onUpdateSequence={onUpdateSequence}
+                  onReorderScenes={onReorderScenes}
+                />
+              ))}
+            </SortableContext>
 
             {/* Add Sequence */}
             {onCreateSequence && (
@@ -346,6 +622,35 @@ function ActNode({
   );
 }
 
+// ─── Sortable Sequence Node ────────────────────────────────────────────────
+
+interface SortableSequenceNodeProps extends SequenceNodeProps {
+  onReorderScenes?: (sequenceId: string, sceneIds: string[]) => Promise<void>;
+}
+
+function SortableSequenceNode(props: SortableSequenceNodeProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: `seq-${props.sequence.id}` });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <SequenceNode {...props} dragHandleProps={{ ...attributes, ...listeners }} />
+    </div>
+  );
+}
+
 // ─── Sequence Node ─────────────────────────────────────────────────────────
 
 interface SequenceNodeProps {
@@ -359,6 +664,8 @@ interface SequenceNodeProps {
   onDeleteScene?: (sceneId: string) => Promise<void>;
   onDeleteSequence?: (sequenceId: string) => Promise<void>;
   onUpdateSequence?: (sequenceId: string, title: string) => Promise<void>;
+  onReorderScenes?: (sequenceId: string, sceneIds: string[]) => Promise<void>;
+  dragHandleProps?: Record<string, unknown>;
 }
 
 function SequenceNode({
@@ -372,6 +679,8 @@ function SequenceNode({
   onDeleteScene,
   onDeleteSequence,
   onUpdateSequence,
+  onReorderScenes,
+  dragHandleProps,
 }: SequenceNodeProps) {
   const [isAddingScene, setIsAddingScene] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -438,7 +747,10 @@ function SequenceNode({
           className="w-full flex items-center gap-2 px-4 py-1.5 hover:bg-bg-hover transition-colors group"
         >
           <ChevronIcon isExpanded={isExpanded} />
-          <span className="text-mono text-text-subtle text-xs">
+          <span
+            {...dragHandleProps}
+            className="text-mono text-text-subtle text-xs cursor-grab active:cursor-grabbing hover:text-text-primary transition-colors"
+          >
             SEQ {String(sequence.index).padStart(2, "0")}
           </span>
           {isEditing ? (
@@ -499,16 +811,21 @@ function SequenceNode({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            {sequence.scenes?.map((scene) => (
-              <SceneRow
-                key={scene.id}
-                scene={scene}
-                isSelected={selectedSceneId === scene.id}
-                onClick={() => onSelectScene(scene)}
-                suggestionCount={suggestionCounts[scene.id] || 0}
-                onDelete={onDeleteScene}
-              />
-            ))}
+            <SortableContext
+              items={(sequence.scenes || []).map((s) => `scene-${s.id}`)}
+              strategy={verticalListSortingStrategy}
+            >
+              {sequence.scenes?.map((scene) => (
+                <SortableSceneRow
+                  key={scene.id}
+                  scene={scene}
+                  isSelected={selectedSceneId === scene.id}
+                  onClick={() => onSelectScene(scene)}
+                  suggestionCount={suggestionCounts[scene.id] || 0}
+                  onDelete={onDeleteScene}
+                />
+              ))}
+            </SortableContext>
 
             {/* Add Scene - inline form or button */}
             {onCreateScene && (
@@ -536,6 +853,31 @@ function SequenceNode({
   );
 }
 
+// ─── Sortable Scene Row ────────────────────────────────────────────────────
+
+function SortableSceneRow(props: SceneRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: `scene-${props.scene.id}` });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <SceneRow {...props} dragHandleProps={{ ...attributes, ...listeners }} />
+    </div>
+  );
+}
+
 // ─── Scene Row ─────────────────────────────────────────────────────────────
 
 interface SceneRowProps {
@@ -544,6 +886,7 @@ interface SceneRowProps {
   onClick: () => void;
   suggestionCount: number;
   onDelete?: (sceneId: string) => Promise<void>;
+  dragHandleProps?: Record<string, unknown>;
 }
 
 function SceneRow({
@@ -552,6 +895,7 @@ function SceneRow({
   onClick,
   suggestionCount,
   onDelete,
+  dragHandleProps,
 }: SceneRowProps) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -584,8 +928,11 @@ function SceneRow({
           />
         )}
 
-        {/* Scene number */}
-        <span className="text-mono text-text-subtle text-xs shrink-0">
+        {/* Scene number - drag handle */}
+        <span
+          {...dragHandleProps}
+          className="text-mono text-text-subtle text-xs cursor-grab active:cursor-grabbing hover:text-text-primary transition-colors shrink-0"
+        >
           SCN {String(scene.index).padStart(2, "0")}
         </span>
 

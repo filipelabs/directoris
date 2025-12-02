@@ -124,4 +124,31 @@ export class ActsService {
 
     return { deleted: true };
   }
+
+  async reorder(projectId: string, userId: string, actIds: string[]) {
+    await this.projectsService.assertProjectAccess(projectId, userId, [
+      ProjectRole.OWNER,
+      ProjectRole.EDITOR,
+    ]);
+
+    // Two-phase update to avoid unique constraint violation on (projectId, index)
+    // Phase 1: Set all indices to negative temporary values
+    // Phase 2: Set to final values
+    await this.prisma.$transaction([
+      ...actIds.map((id, index) =>
+        this.prisma.act.update({
+          where: { id },
+          data: { index: -(index + 1000) },
+        }),
+      ),
+      ...actIds.map((id, index) =>
+        this.prisma.act.update({
+          where: { id },
+          data: { index },
+        }),
+      ),
+    ]);
+
+    return { success: true };
+  }
 }

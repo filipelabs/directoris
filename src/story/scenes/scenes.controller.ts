@@ -11,6 +11,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ScenesService } from './scenes.service';
 import { CreateSceneDto, UpdateSceneCharactersDto } from './dto/create-scene.dto';
 import { UpdateSceneDto } from './dto/update-scene.dto';
+import { ReorderScenesDto } from './dto/reorder-scenes.dto';
 import { CurrentUser } from '../../common/decorators';
 import type { User } from '../../generated/prisma';
 
@@ -69,5 +70,15 @@ export class ScenesController {
   @ApiOperation({ summary: 'Delete scene' })
   delete(@CurrentUser() user: User, @Param('id') id: string) {
     return this.scenesService.delete(id, user.id);
+  }
+
+  @Patch('sequences/:sequenceId/scenes/reorder')
+  @ApiOperation({ summary: 'Reorder scenes in a sequence' })
+  reorder(
+    @CurrentUser() user: User,
+    @Param('sequenceId') sequenceId: string,
+    @Body() dto: ReorderScenesDto,
+  ) {
+    return this.scenesService.reorder(sequenceId, user.id, dto.sceneIds);
   }
 }

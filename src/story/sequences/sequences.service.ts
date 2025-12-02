@@ -138,4 +138,37 @@ export class SequencesService {
 
     return { deleted: true };
   }
+
+  async reorder(actId: string, userId: string, sequenceIds: string[]) {
+    const act = await this.prisma.act.findUnique({
+      where: { id: actId },
+    });
+
+    if (!act) {
+      throw new NotFoundException('Act not found');
+    }
+
+    await this.projectsService.assertProjectAccess(act.projectId, userId, [
+      ProjectRole.OWNER,
+      ProjectRole.EDITOR,
+    ]);
+
+    // Two-phase update to avoid unique constraint violation on (actId, index)
+    await this.prisma.$transaction([
+      ...sequenceIds.map((id, index) =>
+        this.prisma.sequence.update({
+          where: { id },
+          data: { index: -(index + 1000) },
+        }),
+      ),
+      ...sequenceIds.map((id, index) =>
+        this.prisma.sequence.update({
+          where: { id },
+          data: { index },
+        }),
+      ),
+    ]);
+
+    return { success: true };
+  }
 }
