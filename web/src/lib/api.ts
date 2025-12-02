@@ -145,18 +145,18 @@ export const acts = {
 // ─── Sequences ─────────────────────────────────────────────────────────────
 
 export const sequences = {
-  list: (actId: string) => apiFetch<Act[]>(`/acts/${actId}/sequences`),
+  list: (actId: string) => apiFetch<Sequence[]>(`/acts/${actId}/sequences`),
 
-  get: (id: string) => apiFetch<Act>(`/sequences/${id}`),
+  get: (id: string) => apiFetch<Sequence>(`/sequences/${id}`),
 
   create: (actId: string, data: CreateSequenceDto) =>
-    apiFetch<Act>(`/acts/${actId}/sequences`, {
+    apiFetch<Sequence>(`/acts/${actId}/sequences`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
   update: (id: string, data: Partial<CreateSequenceDto>) =>
-    apiFetch<Act>(`/sequences/${id}`, {
+    apiFetch<Sequence>(`/sequences/${id}`, {
       method: "PATCH",
       body: JSON.stringify(data),
     }),

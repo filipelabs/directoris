@@ -13,6 +13,10 @@ interface SceneTreeProps {
   suggestionCounts?: Record<string, number>;
   onCreateScene?: (sequenceId: string, title: string) => Promise<void>;
   onDeleteScene?: (sceneId: string) => Promise<void>;
+  onCreateAct?: (title: string) => Promise<void>;
+  onDeleteAct?: (actId: string) => Promise<void>;
+  onCreateSequence?: (actId: string, title: string) => Promise<void>;
+  onDeleteSequence?: (sequenceId: string) => Promise<void>;
 }
 
 export function SceneTree({
@@ -22,8 +26,20 @@ export function SceneTree({
   suggestionCounts = {},
   onCreateScene,
   onDeleteScene,
+  onCreateAct,
+  onDeleteAct,
+  onCreateSequence,
+  onDeleteSequence,
 }: SceneTreeProps) {
   const safeActs = acts || [];
+  const [isAddingAct, setIsAddingAct] = useState(false);
+
+  const handleCreateAct = async (title: string) => {
+    if (onCreateAct) {
+      await onCreateAct(title);
+      setIsAddingAct(false);
+    }
+  };
 
   const [expandedActs, setExpandedActs] = useState<Set<string>>(
     new Set(safeActs.map((a) => a.id))
@@ -80,12 +96,35 @@ export function SceneTree({
             suggestionCounts={suggestionCounts}
             onCreateScene={onCreateScene}
             onDeleteScene={onDeleteScene}
+            onDeleteAct={onDeleteAct}
+            onCreateSequence={onCreateSequence}
+            onDeleteSequence={onDeleteSequence}
           />
         ))}
+
+        {/* Add Act */}
+        {onCreateAct && (
+          <div className="px-4 mt-2">
+            <InlineAddForm
+              placeholder="New act title..."
+              onSubmit={handleCreateAct}
+              onCancel={() => setIsAddingAct(false)}
+              isVisible={isAddingAct}
+              indentLevel={0}
+            />
+            {!isAddingAct && (
+              <AddButton
+                label="Add Act"
+                onClick={() => setIsAddingAct(true)}
+                indentLevel={0}
+              />
+            )}
+          </div>
+        )}
       </div>
 
       {/* Empty state */}
-      {safeActs.length === 0 && (
+      {safeActs.length === 0 && !isAddingAct && (
         <div className="px-4 py-8 text-center">
           <p className="text-text-subtle text-caption">
             No acts yet. Create your first act to get started.
@@ -109,6 +148,9 @@ interface ActNodeProps {
   suggestionCounts: Record<string, number>;
   onCreateScene?: (sequenceId: string, title: string) => Promise<void>;
   onDeleteScene?: (sceneId: string) => Promise<void>;
+  onDeleteAct?: (actId: string) => Promise<void>;
+  onCreateSequence?: (actId: string, title: string) => Promise<void>;
+  onDeleteSequence?: (sequenceId: string) => Promise<void>;
 }
 
 function ActNode({
@@ -122,26 +164,75 @@ function ActNode({
   suggestionCounts,
   onCreateScene,
   onDeleteScene,
+  onDeleteAct,
+  onCreateSequence,
+  onDeleteSequence,
 }: ActNodeProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isAddingSequence, setIsAddingSequence] = useState(false);
+
+  const handleDeleteAct = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDeleteAct && confirm(`Delete act "${act.title}" and all its contents?`)) {
+      await onDeleteAct(act.id);
+    }
+  };
+
+  const handleCreateSequence = async (title: string) => {
+    if (onCreateSequence) {
+      await onCreateSequence(act.id, title);
+      setIsAddingSequence(false);
+    }
+  };
+
   return (
     <div>
       {/* Act header */}
-      <button
-        onClick={onToggle}
-        className="w-full flex items-center gap-2 px-4 py-2 hover:bg-bg-hover transition-colors group"
+      <div
+        className="relative"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
-        <ChevronIcon isExpanded={isExpanded} />
-        <span className="text-mono text-text-subtle text-xs">
-          ACT {toRoman(act.index + 1)}
-        </span>
-        <span className="text-caption font-medium text-text-primary truncate">
-          {act.title}
-        </span>
-      </button>
+        <button
+          onClick={onToggle}
+          className="w-full flex items-center gap-2 px-4 py-2 hover:bg-bg-hover transition-colors group"
+        >
+          <ChevronIcon isExpanded={isExpanded} />
+          <span className="text-mono text-text-subtle text-xs">
+            ACT {toRoman(act.index + 1)}
+          </span>
+          <span className="text-caption font-medium text-text-primary truncate">
+            {act.title}
+          </span>
+        </button>
+
+        {/* Delete button */}
+        {onDeleteAct && isHovered && (
+          <button
+            onClick={handleDeleteAct}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-subtle hover:text-status-error transition-colors rounded"
+            title="Delete act"
+          >
+            <svg
+              className="w-3.5 h-3.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 18 18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        )}
+      </div>
 
       {/* Sequences */}
       <AnimatePresence initial={false}>
-        {isExpanded && act.sequences && (
+        {isExpanded && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -149,7 +240,7 @@ function ActNode({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            {act.sequences.map((seq) => (
+            {act.sequences?.map((seq) => (
               <SequenceNode
                 key={seq.id}
                 sequence={seq}
@@ -160,8 +251,29 @@ function ActNode({
                 suggestionCounts={suggestionCounts}
                 onCreateScene={onCreateScene}
                 onDeleteScene={onDeleteScene}
+                onDeleteSequence={onDeleteSequence}
               />
             ))}
+
+            {/* Add Sequence */}
+            {onCreateSequence && (
+              <div className="pl-4">
+                <InlineAddForm
+                  placeholder="New sequence title..."
+                  onSubmit={handleCreateSequence}
+                  onCancel={() => setIsAddingSequence(false)}
+                  isVisible={isAddingSequence}
+                  indentLevel={1}
+                />
+                {!isAddingSequence && (
+                  <AddButton
+                    label="Add Sequence"
+                    onClick={() => setIsAddingSequence(true)}
+                    indentLevel={1}
+                  />
+                )}
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -180,6 +292,7 @@ interface SequenceNodeProps {
   suggestionCounts: Record<string, number>;
   onCreateScene?: (sequenceId: string, title: string) => Promise<void>;
   onDeleteScene?: (sceneId: string) => Promise<void>;
+  onDeleteSequence?: (sequenceId: string) => Promise<void>;
 }
 
 function SequenceNode({
@@ -191,8 +304,10 @@ function SequenceNode({
   suggestionCounts,
   onCreateScene,
   onDeleteScene,
+  onDeleteSequence,
 }: SequenceNodeProps) {
   const [isAddingScene, setIsAddingScene] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const handleCreateScene = async (title: string) => {
     if (onCreateScene) {
@@ -201,21 +316,57 @@ function SequenceNode({
     }
   };
 
+  const handleDeleteSequence = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDeleteSequence && confirm(`Delete sequence "${sequence.title}" and all its scenes?`)) {
+      await onDeleteSequence(sequence.id);
+    }
+  };
+
   return (
     <div className="pl-4">
       {/* Sequence header */}
-      <button
-        onClick={onToggle}
-        className="w-full flex items-center gap-2 px-4 py-1.5 hover:bg-bg-hover transition-colors group"
+      <div
+        className="relative"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
-        <ChevronIcon isExpanded={isExpanded} />
-        <span className="text-mono text-text-subtle text-xs">
-          SEQ {String(sequence.index + 1).padStart(2, "0")}
-        </span>
-        <span className="text-caption text-text-muted truncate group-hover:text-text-primary">
-          {sequence.title}
-        </span>
-      </button>
+        <button
+          onClick={onToggle}
+          className="w-full flex items-center gap-2 px-4 py-1.5 hover:bg-bg-hover transition-colors group"
+        >
+          <ChevronIcon isExpanded={isExpanded} />
+          <span className="text-mono text-text-subtle text-xs">
+            SEQ {String(sequence.index + 1).padStart(2, "0")}
+          </span>
+          <span className="text-caption text-text-muted truncate group-hover:text-text-primary">
+            {sequence.title}
+          </span>
+        </button>
+
+        {/* Delete button */}
+        {onDeleteSequence && isHovered && (
+          <button
+            onClick={handleDeleteSequence}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-subtle hover:text-status-error transition-colors rounded"
+            title="Delete sequence"
+          >
+            <svg
+              className="w-3.5 h-3.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 18 18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        )}
+      </div>
 
       {/* Scenes */}
       <AnimatePresence initial={false}>

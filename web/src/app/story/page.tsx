@@ -12,6 +12,7 @@ import type {
   User,
   Project,
   Act,
+  Sequence,
   Scene,
   Character,
   Location,
@@ -301,6 +302,112 @@ export default function StoryPage() {
       }
     },
     [selectedScene?.id]
+  );
+
+  // Create act
+  const handleCreateAct = useCallback(
+    async (title: string) => {
+      if (!project) return;
+      try {
+        const newAct = await api.acts.create(project.id, {
+          title,
+          index: acts.length,
+        });
+        setActs((prev) => [...prev, { ...newAct, sequences: [] }]);
+      } catch (err) {
+        console.error("Failed to create act:", err);
+        throw err;
+      }
+    },
+    [project, acts.length]
+  );
+
+  // Delete act
+  const handleDeleteAct = useCallback(
+    async (actId: string) => {
+      try {
+        await api.acts.delete(actId);
+        setActs((prev) => prev.filter((a) => a.id !== actId));
+
+        // Clear selection if deleted act contained the selected scene
+        if (selectedScene) {
+          const deletedAct = acts.find((a) => a.id === actId);
+          const sceneInDeletedAct = deletedAct?.sequences?.some((seq) =>
+            seq.scenes?.some((s) => s.id === selectedScene.id)
+          );
+          if (sceneInDeletedAct) {
+            setSelectedScene(null);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to delete act:", err);
+        throw err;
+      }
+    },
+    [acts, selectedScene]
+  );
+
+  // Create sequence
+  const handleCreateSequence = useCallback(
+    async (actId: string, title: string) => {
+      try {
+        const act = acts.find((a) => a.id === actId);
+        const newSeq = await api.sequences.create(actId, {
+          title,
+          index: act?.sequences?.length || 0,
+        });
+        setActs((prev) =>
+          prev.map((a) =>
+            a.id === actId
+              ? {
+                  ...a,
+                  sequences: [
+                    ...(a.sequences || []),
+                    { ...newSeq, scenes: [] },
+                  ],
+                }
+              : a
+          )
+        );
+      } catch (err) {
+        console.error("Failed to create sequence:", err);
+        throw err;
+      }
+    },
+    [acts]
+  );
+
+  // Delete sequence
+  const handleDeleteSequence = useCallback(
+    async (sequenceId: string) => {
+      try {
+        await api.sequences.delete(sequenceId);
+        setActs((prev) =>
+          prev.map((a) => ({
+            ...a,
+            sequences: (a.sequences || []).filter((s) => s.id !== sequenceId),
+          }))
+        );
+
+        // Clear selection if deleted sequence contained the selected scene
+        if (selectedScene) {
+          const sequenceHasScene = acts.some((a) =>
+            a.sequences?.some(
+              (seq) =>
+                seq.id === sequenceId &&
+                seq.scenes?.some((s) => s.id === selectedScene.id)
+            )
+          );
+          if (sequenceHasScene) {
+            setSelectedScene(null);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to delete sequence:", err);
+        throw err;
+      }
+    },
+    [acts, selectedScene]
   );
 
   // Switch to a different project
@@ -608,6 +715,10 @@ export default function StoryPage() {
                 suggestionCounts={suggestionCounts}
                 onCreateScene={handleCreateScene}
                 onDeleteScene={handleDeleteScene}
+                onCreateAct={handleCreateAct}
+                onDeleteAct={handleDeleteAct}
+                onCreateSequence={handleCreateSequence}
+                onDeleteSequence={handleDeleteSequence}
               />
 
               {/* Onboarding checklist */}
